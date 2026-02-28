@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>onetap.pub - Always Win</title>
+    <style>
+        body {
+            background-color: #0d0216;
+            color: white;
+            font-family: 'Segoe UI', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        @keyframes gradientMove {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .fade-in {
+            animation: fadeInUp 0.4s ease-out forwards;
+        }
+
+        #dynamic-title {
+            font-size: 5rem;
+            font-weight: 900;
+            margin-bottom: 0;
+            background: linear-gradient(90deg, #ff00ff, #7d2ae8, #00d4ff, #ff00ff);
+            background-size: 300% auto;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: 8px;
+            font-family: 'lucida console', Courier, monospace;
+            animation: gradientMove 3s ease infinite;
+            filter: drop-shadow(0 0 15px rgba(236, 72, 153, 0.5));
+        }
+
+        p {
+            font-size: 1.2rem;
+            color: #e0aaff;
+            margin-top: 10px;
+            letter-spacing: 4px;
+            opacity: 0.9;
+            text-shadow: 0 0 10px rgba(168, 85, 247, 0.5);
+        }
+
+        .btn {
+            margin-top: 40px;
+            padding: 15px 45px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            color: #fff;
+            text-decoration: none;
+            border: 2px solid #ff00ff;
+            border-radius: 50px;
+            transition: 0.3s;
+            background: transparent;
+            text-transform: uppercase;
+            box-shadow: 0 0 15px rgba(255, 0, 255, 0.2);
+        }
+
+        .btn:hover {
+            background: #ff00ff;
+            box-shadow: 0 0 50px #ff00ff;
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+<body>
+
+    <h1 id="dynamic-title" class="fade-in">onetap.pub</h1>
+    <p class="fade-in" style="animation-delay: 0.1s;">Always win.</p>
+    
+    <!-- Без target="_blank" страница просто обновится на Google -->
+    <a href="https://www.google.com" class="btn fade-in" style="animation-delay: 0.2s;">Enter-In</a>
+
+    <script>
+        const titleElement = document.getElementById('dynamic-title');
+        const baseText = "onetap.pub";
+
+        function randomizeCase(text) {
+            return text.split('')
+                .map(char => Math.random() > 0.5 ? char.toUpperCase() : char.toLowerCase())
+                .join('');
+        }
+
+        setInterval(() => {
+            titleElement.innerText = randomizeCase(baseText);
+        }, 50);
+    </script>
+
+</body>
+</html>
