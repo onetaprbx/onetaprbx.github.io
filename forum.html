@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>onetap forum</title>
+    <style>
+        :root { --bg: #0a0a0a; --panel: #111; --accent: #3498db; --admin: #ff4444; --border: #1a1a1a; --text: #999; }
+        body { background: var(--bg); color: var(--text); font-family: "Segoe UI", sans-serif; margin: 0; font-size: 11px; text-transform: uppercase; }
+        nav { background: var(--panel); border-bottom: 1px solid var(--border); padding: 12px 40px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
+        .logo { font-size: 18px; font-weight: 900; color: #ffffff; cursor: pointer; letter-spacing: 2px; }
+        .nav-links a { color: #444; text-decoration: none; margin-left: 20px; cursor: pointer; font-weight: bold; }
+        .nav-links a:hover, .active-link { color: var(--accent) !important; }
+        
+        .container { max-width: 1100px; margin: 30px auto; padding: 0 20px; display: grid; grid-template-columns: 1fr 300px; gap: 20px; }
+        .view { display: none; grid-column: span 2; }
+        .view.active { display: block; }
+        .forum-grid { display: grid; grid-template-columns: 1fr 300px; gap: 20px; grid-column: span 2; }
+
+        /* Элементы */
+        .card { background: var(--panel); border: 1px solid var(--border); border-top: 2px solid var(--accent); padding: 20px; margin-bottom: 20px; }
+        .admin-border { border-top-color: var(--admin) !important; }
+        input, textarea { width: 100%; background: #080808; border: 1px solid var(--border); padding: 10px; color: var(--accent); margin-bottom: 10px; box-sizing: border-box; outline: none; }
+        .btn { background: transparent; border: 1px solid var(--accent); color: var(--accent); padding: 8px 15px; cursor: pointer; font-weight: 900; font-size: 10px; }
+        .btn:hover { background: var(--accent); color: #000; }
+        .btn-admin { border-color: var(--admin); color: var(--admin); }
+        .btn-admin:hover { background: var(--admin); color: #fff; }
+
+        /* Форум и Чат */
+        .thread-item { padding: 15px; border-bottom: 1px solid #161616; cursor: pointer; transition: 0.2s; position: relative; }
+        .thread-item:hover { background: #141414; }
+        .chat-box { height: 400px; overflow-y: auto; background: #080808; border: 1px solid var(--border); padding: 10px; margin-bottom: 10px; display: flex; flex-direction: column; }
+        .msg { margin-bottom: 8px; font-size: 10px; border-bottom: 1px solid #111; padding-bottom: 4px; }
+        .msg .author { font-weight: bold; color: var(--accent); }
+        .msg .admin-tag { color: var(--admin); font-size: 8px; margin-right: 5px; }
+
+        /* Модалка темы */
+        #single-thread-view { background: var(--panel); border: 1px solid var(--border); padding: 25px; }
+        .comment { background: #0d0d0d; padding: 10px; margin-top: 10px; border-left: 2px solid #333; }
+
+        .auth-center { grid-column: span 2; width: 300px; margin: 100px auto; }
+    </style>
+</head>
+<body>
+
+<nav>
+    <div class="logo" onclick="location.reload()">onetap</div>
+    <div class="nav-links" id="nav-actions">
+        <a onclick="showView('login-view')">Login</a>
+        <a onclick="showView('register-view')">Register</a>
+    </div>
+</nav>
+
+<div class="container">
+    <!-- LOGIN -->
+    <div id="login-view" class="view active auth-center">
+        <div class="card">
+            <h2>SIGN IN</h2>
+            <input type="text" id="log-user" placeholder="USERNAME">
+            <input type="password" id="log-pass" placeholder="PASSWORD">
+            <button class="btn" onclick="login()">LOGIN</button>
+        </div>
+    </div>
+
+    <!-- REGISTER -->
+    <div id="register-view" class="view auth-center">
+        <div class="card">
+            <h2>REGISTER</h2>
+            <input type="text" id="reg-user" placeholder="USERNAME">
+            <input type="password" id="reg-pass" placeholder="PASSWORD">
+            <input type="text" id="reg-invite" placeholder="INVITE KEY">
+            <button class="btn" onclick="register()">CREATE ACCOUNT</button>
+        </div>
+    </div>
+
+    <!-- MAIN FORUM & CHAT -->
+    <div id="main-view" class="view">
+        <div class="forum-grid">
+            <div class="left-col">
+                <div class="card" id="admin-tools" style="display:none; border-color: var(--admin)">
+                    <h3 style="color: var(--admin); margin: 0 0 10px 0;">ADMIN PANEL: Aidar_OWNER</h3>
+                    <button class="btn btn-admin" onclick="clearAllData()">WIPE ALL DATABASE</button>
+                </div>
+
+                <div class="card">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                        <h2 style="margin:0; color:#fff;">forum</h2>
+                        <button class="btn" onclick="openCreateModal()">+ New Thread</button>
+                    </div>
+                    <div id="thread-list"></div>
+                </div>
+            </div>
+
+            <div class="right-col">
+                <div class="card">
+                    <h3 style="margin-top:0; color:#fff;">LIVE CHAT</h3>
+                    <div class="chat-box" id="chat-display"></div>
+                    <input type="text" id="chat-input" placeholder="Type message..." onkeypress="if(event.key==='Enter') sendChat()">
+                    <button class="btn" style="width:100%" onclick="sendChat()">Send</button>
+                </div>
+                <div class="card" id="premium-box">
+                    <h3 style="margin-top:0; color: gold;">Premium</h3>
+                    <p id="prem-status">FREE USER</p>
+                    <button class="btn" style="border-color:gold; color:gold" onclick="buyPremium()">Upgrade</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- THREAD CONTENT VIEW -->
+    <div id="thread-content-view" class="view">
+        <div class="card">
+            <button class="btn" onclick="showView('main-view')" style="margin-bottom:20px;">< BACK</button>
+            <h1 id="view-title" style="color:#fff; margin:0;"></h1>
+            <p id="view-meta" style="color:#444; font-size:9px;"></p>
+            <div id="view-body" style="margin:20px 0; font-size:12px; color:#ccc; border-bottom:1px solid #222; padding-bottom:20px;"></div>
+            
+            <h3>COMMENTS</h3>
+            <div id="comments-list"></div>
+            <hr style="border:0; border-top:1px solid #1a1a1a; margin:20px 0;">
+            <textarea id="comm-text" placeholder="Write a comment..."></textarea>
+            <button class="btn" onclick="addComment()">Post Comment</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL CREATE -->
+<div id="modal-create" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:1000; justify-content:center; align-items:center;">
+    <div class="card" style="width:500px;">
+        <h2>Create New Thread</h2>
+        <input type="text" id="new-t-title" placeholder="TITLE">
+        <textarea id="new-t-body" rows="5" placeholder="CONTENT"></textarea>
+        <button class="btn" onclick="saveThread()">POST</button>
+        <button class="btn" style="border-color:#444; color:#444;" onclick="openCreateModal()">CANCEL</button>
+    </div>
+</div>
+
+<script>
+    const INVITES = ["ONETAP-Kk3L8YYLml9CWGk3WO", "ONETAP-INFINITEINVITE", "ONETAP-PUBLIC"];
+    let currentUser = localStorage.getItem('user') || "";
+    let activeThreadId = null;
+
+    window.onload = () => {
+        if(currentUser) loginSuccess();
+        renderThreads();
+        renderChat();
+    };
+
+    function showView(id) {
+        document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+    }
+
+    // AUTH
+    function register() {
+        const u = document.getElementById('reg-user').value.trim();
+        const p = document.getElementById('reg-pass').value;
+        const i = document.getElementById('reg-invite').value.trim().toUpperCase();
+        if(INVITES.includes(i) && u) {
+            localStorage.setItem('acc_' + u, p);
+            alert("Success");
+            showView('login-view');
+        } else { alert("Invalid Invite or Something went wrong"); }
+    }
+
+    function login() {
+        const u = document.getElementById('log-user').value.trim();
+        const p = document.getElementById('log-pass').value;
+        if(localStorage.getItem('acc_' + u) === p && u) {
+            currentUser = u;
+            localStorage.setItem('user', u);
+            loginSuccess();
+        } else { alert("Wrong Credentials"); }
+    }
+
+    function loginSuccess() {
+        document.getElementById('nav-actions').innerHTML = `<span style="color:#fff">WELCOME, ${currentUser}</span> <a onclick="logout()">Logout</a>`;
+        if(currentUser === "Aidar_OWNER") {
+            document.getElementById('admin-tools').style.display = 'block';
+        }
+        showView('main-view');
+    }
+
+    function logout() { localStorage.removeItem('user'); location.reload(); }
+
+    // FORUM LOGIC
+    function openCreateModal() {
+        const m = document.getElementById('modal-create');
+        m.style.display = m.style.display === 'none' ? 'flex' : 'none';
+    }
+
+    function saveThread() {
+        const title = document.getElementById('new-t-title').value;
+        const body = document.getElementById('new-t-body').value;
+        if(!title || !body) return;
+
+        let threads = JSON.parse(localStorage.getItem('f_threads') || '[]');
+        const id = Date.now();
+        threads.unshift({ id, title, body, author: currentUser, date: new Date().toLocaleString(), comments: [] });
+        localStorage.setItem('f_threads', JSON.stringify(threads));
+        
+        openCreateModal();
+        renderThreads();
+    }
+
+    function renderThreads() {
+        const list = document.getElementById('thread-list');
+        const threads = JSON.parse(localStorage.getItem('f_threads') || '[]');
+        list.innerHTML = "";
+        threads.forEach(t => {
+            const delBtn = currentUser === "Aidar_OWNER" ? `<button class="btn btn-admin" onclick="deleteThread(${t.id}, event)" style="position:absolute; right:10px; top:15px;">DELETE</button>` : "";
+            list.innerHTML += `
+                <div class="thread-item" onclick="viewThread(${t.id})">
+                    <div style="color:var(--accent); font-size:12px; font-weight:bold;">${t.title}</div>
+                    <div style="font-size:9px; color:#444;">BY ${t.author} • ${t.date}</div>
+                    ${delBtn}
+                </div>`;
+        });
+    }
+
+    function viewThread(id) {
+        const threads = JSON.parse(localStorage.getItem('f_threads') || '[]');
+        const t = threads.find(x => x.id === id);
+        if(!t) return;
+        activeThreadId = id;
+        document.getElementById('view-title').innerText = t.title;
+        document.getElementById('view-meta').innerText = `POSTED BY ${t.author} ON ${t.date}`;
+        document.getElementById('view-body').innerText = t.body;
+        renderComments();
+        showView('thread-content-view');
+    }
+
+    function addComment() {
+        const text = document.getElementById('comm-text').value;
+        if(!text) return;
+        let threads = JSON.parse(localStorage.getItem('f_threads') || '[]');
+        const tIdx = threads.findIndex(x => x.id === activeThreadId);
+        threads[tIdx].comments.push({ author: currentUser, text, date: new Date().toLocaleTimeString() });
+        localStorage.setItem('f_threads', JSON.stringify(threads));
+        document.getElementById('comm-text').value = "";
+        renderComments();
+    }
+
+    function renderComments() {
+        const threads = JSON.parse(localStorage.getItem('f_threads') || '[]');
+        const t = threads.find(x => x.id === activeThreadId);
+        const container = document.getElementById('comments-list');
+        container.innerHTML = "";
+        t.comments.forEach(c => {
+            container.innerHTML += `<div class="comment"><strong>${c.author}:</strong> ${c.text} <span style="float:right; font-size:8px; color:#333;">${c.date}</span></div>`;
+        });
+    }
+
+    // CHAT LOGIC
+    function sendChat() {
+        const input = document.getElementById('chat-input');
+        if(!input.value) return;
+        let chats = JSON.parse(localStorage.getItem('f_chats') || '[]');
+        chats.push({ author: currentUser, msg: input.value, isAdmin: (currentUser === "Aidar_OWNER") });
+        if(chats.length > 50) chats.shift();
+        localStorage.setItem('f_chats', JSON.stringify(chats));
+        input.value = "";
+        renderChat();
+    }
+
+    function renderChat() {
+        const display = document.getElementById('chat-display');
+        const chats = JSON.parse(localStorage.getItem('f_chats') || '[]');
+        display.innerHTML = chats.map(c => `
+            <div class="msg">
+                ${c.isAdmin ? '<span class="admin-tag">[ADMIN]</span>' : ''}
+                <span class="author">${c.author}:</span> ${c.msg}
+            </div>
+        `).join('');
+        display.scrollTop = display.scrollHeight;
+    }
+
+    // ADMIN FUNCTIONS
+    function deleteThread(id, e) {
+        e.stopPropagation();
+        let threads = JSON.parse(localStorage.getItem('f_threads') || '[]');
+        threads = threads.filter(x => x.id !== id);
+        localStorage.setItem('f_threads', JSON.stringify(threads));
+        renderThreads();
+    }
+
+    function clearAllData() {
+        if(confirm("WIPE ALL DATA?")) {
+            localStorage.removeItem('f_threads');
+            localStorage.removeItem('f_chats');
+            location.reload();
+        }
+    }
+
+    function buyPremium() {
+        document.getElementById('prem-status').innerText = "Premium Active";
+        document.getElementById('prem-status').style.color = "gold";
+        alert("Premium For free");
+    }
+
+    // Синхронизация
+    window.addEventListener('storage', () => { renderThreads(); renderChat(); });
+</script>
+</body>
+</html>
