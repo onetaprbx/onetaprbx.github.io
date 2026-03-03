@@ -8,7 +8,29 @@
     <style>
         .role-user { color: var(--accent); }
         .role-admin { color: var(--admin); font-weight: bold; text-shadow: 0 0 5px rgba(255,68,68,0.5); }
-        .avatar-img { width: 40px; height: 40px; border: 1px solid var(--border); object-fit: cover; margin-right: 10px; }
+        .avatar-img { 
+            width: 40px; 
+            height: 40px; 
+            border: 1px solid var(--border); 
+            object-fit: cover; 
+            margin-right: 10px;
+            background: var(--accent);
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: #000;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .default-avatar {
+            background: var(--accent);
+            color: #000;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
         .like-btn { cursor: pointer; color: #444; font-size: 10px; margin-top: 5px; display: inline-block; }
         .like-btn.active { color: #ff4444; }
 
@@ -73,11 +95,10 @@
         <div class="card">
             <h2>Settings: <span id="prof-name-display"></span></h2>
             <div style="display:flex; gap: 20px; align-items: flex-start;">
-                <img id="current-avatar" src="https://i.imgur.com" class="avatar-img" style="width:80px; height:80px;">
+                <div id="current-avatar" class="avatar-img default-avatar" style="width:80px; height:80px; font-size:30px;">?</div>
                 <div style="flex:1">
                     <input type="text" id="set-name" placeholder="NEW USERNAME">
                     <div id="profile-name-error" class="error-message"></div>
-                    <input type="text" id="set-avatar" placeholder="AVATAR URL (IMGUR)">
                     <input type="password" id="set-pass" placeholder="NEW PASSWORD">
                     <button class="btn" onclick="updateProfile()">SAVE CHANGES</button>
                     <button class="btn" onclick="showView('main-view')" style="border-color:#444; color:#444">CANCEL</button>
@@ -221,18 +242,12 @@
     const INVITES = ["ONETAP-Kk3L8YYLml9CWGk3WO", "ONETAP-INFINITEINVITE", "ONETAP-PUBLIC"];
     let currentUser = localStorage.getItem('user') || "";
     let activeThreadId = null;
+    let allThreads = [];
 
     window.onload = () => {
         if(currentUser) loginSuccess();
-        renderThreads();
         initChat();
-        
-        // Синхронизация форума между вкладками
-        window.addEventListener('storage', (e) => {
-            if (e.key === 'f_threads') {
-                renderThreads();
-            }
-        });
+        initForum();
     };
 
     // ==================== ЧАТ ====================
@@ -241,7 +256,9 @@
         
         pubnub.addListener({
             message: function(data) {
-                addMessageToChat(data.message);
+                if (data.channel === 'onetap-chat') {
+                    addMessageToChat(data.message);
+                }
             }
         });
         
@@ -262,8 +279,6 @@
             } else {
                 display.innerHTML = '<div class="msg">No messages yet</div>';
             }
-        }).catch((error) => {
-            console.error('Error loading history:', error);
         });
     }
 
@@ -276,13 +291,8 @@
             display.innerHTML = '';
         }
         
-        // Получаем аватар если есть
-        const avatar = localStorage.getItem('avatar_' + msg.author) || '';
-        const avatarHtml = avatar ? `<img src="${avatar}" style="width:15px; height:15px; border-radius:50%; margin-right:5px;">` : '';
-        
         display.innerHTML += `
             <div class="msg">
-                ${avatarHtml}
                 ${msg.is_admin ? '<span class="admin-tag">[ADMIN]</span>' : ''}
                 <span class="author">${msg.author}:</span> ${msg.text}
                 <span style="float:right; font-size:8px; color:#333;">${msg.time || ''}</span>
@@ -316,6 +326,65 @@
 
     // ==================== ФОРУМ (ПУБЛИЧНЫЙ) ====================
     
+    function initForum() {
+        // Подписываемся на канал форума
+        pubnub.subscribe({ channels: ['onetap-forum'] });
+        
+        pubnub.addListener({
+            message: function(data) {
+                if (data.channel === 'onetap-forum') {
+                    if (data.message.type === 'new_thread') {
+                        allThreads.unshift(data.message.thread);
+                        renderThreads();
+                    } else if (data.message.type === 'new_comment') {
+                        updateThreadComments(data.message.threadId, data.message.comment);
+                    } else if (data.message.type === 'like_update') {
+                        updateThreadLikes(data.message.threadId, data.message.likes);
+                    } else if (data.message.type === 'delete_thread') {
+                        allThreads = allThreads.filter(t => t.id !== data.message.threadId);
+                        renderThreads();
+                    }
+                }
+            }
+        });
+        
+        loadPreviousThreads();
+    }
+
+    function loadPreviousThreads() {
+        pubnub.history({
+            channel: 'onetap-forum',
+            count: 100
+        }).then((response) => {
+            const messages = response.messages.map(m => m.entry);
+            
+            // Собираем все треды из истории
+            const threadsMap = new Map();
+            
+            messages.forEach(msg => {
+                if (msg.type === 'new_thread') {
+                    threadsMap.set(msg.thread.id, msg.thread);
+                } else if (msg.type === 'new_comment') {
+                    const thread = threadsMap.get(msg.threadId);
+                    if (thread) {
+                        if (!thread.comments) thread.comments = [];
+                        thread.comments.push(msg.comment);
+                    }
+                } else if (msg.type === 'like_update') {
+                    const thread = threadsMap.get(msg.threadId);
+                    if (thread) {
+                        thread.likes = msg.likes;
+                    }
+                } else if (msg.type === 'delete_thread') {
+                    threadsMap.delete(msg.threadId);
+                }
+            });
+            
+            allThreads = Array.from(threadsMap.values());
+            renderThreads();
+        });
+    }
+
     function saveThread() {
         const title = document.getElementById('new-t-title').value;
         const body = document.getElementById('new-t-body').value;
@@ -324,10 +393,8 @@
             return;
         }
 
-        let threads = JSON.parse(localStorage.getItem('f_threads') || '[]');
-        const id = Date.now();
         const newThread = { 
-            id, 
+            id: Date.now(),
             title, 
             body, 
             author: currentUser, 
@@ -335,40 +402,45 @@
             comments: [], 
             likes: [] 
         };
-        
-        threads.unshift(newThread);
-        localStorage.setItem('f_threads', JSON.stringify(threads));
-        
-        // Оповещаем другие вкладки
-        window.dispatchEvent(new Event('storage'));
-        
+
+        pubnub.publish({
+            channel: 'onetap-forum',
+            message: {
+                type: 'new_thread',
+                thread: newThread,
+                timestamp: Date.now()
+            },
+            storeInHistory: true
+        });
+
         document.getElementById('new-t-title').value = "";
         document.getElementById('new-t-body').value = "";
         openCreateModal();
-        renderThreads();
     }
 
     function renderThreads() {
         const list = document.getElementById('thread-list');
-        const threads = JSON.parse(localStorage.getItem('f_threads') || '[]');
         list.innerHTML = "";
         
-        if (threads.length === 0) {
+        if (allThreads.length === 0) {
             list.innerHTML = '<div class="thread-item">No threads yet</div>';
             return;
         }
         
-        threads.forEach(t => {
+        // Сортируем по дате (новые сверху)
+        const sortedThreads = [...allThreads].sort((a, b) => b.id - a.id);
+        
+        sortedThreads.forEach(t => {
             const likes = t.likes ? t.likes.length : 0;
             const isLiked = t.likes && t.likes.includes(currentUser) ? 'active' : '';
             const roleClass = t.author === "Aidar_OWNER" ? 'role-admin' : 'role-user';
-            const avatar = localStorage.getItem('avatar_' + t.author) || "https://i.imgur.com";
+            const avatar = t.author.charAt(0).toUpperCase();
             const delBtn = currentUser === "Aidar_OWNER" ? `<button class="btn btn-admin" onclick="deleteThread(${t.id}, event)" style="position:absolute; right:10px; top:15px;">DELETE</button>` : "";
 
             list.innerHTML += `
                 <div class="thread-item" onclick="viewThread(${t.id})">
                     <div style="display:flex; align-items:center;">
-                        <img src="${avatar}" class="avatar-img" style="width:25px; height:25px;">
+                        <div class="avatar-img default-avatar" style="width:25px; height:25px;">${avatar}</div>
                         <div style="flex:1">
                             <div style="color:var(--accent); font-size:12px; font-weight:bold;">${t.title}</div>
                             <div style="font-size:9px; color:#444;">BY <span class="${roleClass}">${t.author}</span> • ${t.date}</div>
@@ -382,25 +454,40 @@
 
     function toggleLike(id, e) {
         e.stopPropagation();
-        let threads = JSON.parse(localStorage.getItem('f_threads') || '[]');
-        const idx = threads.findIndex(x => x.id === id);
-        if (!threads[idx].likes) threads[idx].likes = [];
+        const thread = allThreads.find(t => t.id === id);
+        if (!thread) return;
         
-        const userIdx = threads[idx].likes.indexOf(currentUser);
+        if (!thread.likes) thread.likes = [];
+        
+        const userIdx = thread.likes.indexOf(currentUser);
         if (userIdx === -1) {
-            threads[idx].likes.push(currentUser);
+            thread.likes.push(currentUser);
         } else {
-            threads[idx].likes.splice(userIdx, 1);
+            thread.likes.splice(userIdx, 1);
         }
-        
-        localStorage.setItem('f_threads', JSON.stringify(threads));
-        window.dispatchEvent(new Event('storage'));
-        renderThreads();
+
+        pubnub.publish({
+            channel: 'onetap-forum',
+            message: {
+                type: 'like_update',
+                threadId: id,
+                likes: thread.likes,
+                timestamp: Date.now()
+            },
+            storeInHistory: true
+        });
+    }
+
+    function updateThreadLikes(threadId, likes) {
+        const thread = allThreads.find(t => t.id === threadId);
+        if (thread) {
+            thread.likes = likes;
+            renderThreads();
+        }
     }
 
     function viewThread(id) {
-        const threads = JSON.parse(localStorage.getItem('f_threads') || '[]');
-        const t = threads.find(x => x.id === id);
+        const t = allThreads.find(x => x.id === id);
         if(!t) return;
         activeThreadId = id;
         document.getElementById('view-title').innerText = t.title;
@@ -414,32 +501,47 @@
         const text = document.getElementById('comm-text').value;
         if(!text || !currentUser) return;
         
-        let threads = JSON.parse(localStorage.getItem('f_threads') || '[]');
-        const tIdx = threads.findIndex(x => x.id === activeThreadId);
-        if (tIdx !== -1) {
-            if (!threads[tIdx].comments) threads[tIdx].comments = [];
-            threads[tIdx].comments.push({ 
-                author: currentUser, 
-                text, 
-                date: new Date().toLocaleTimeString() 
-            });
-            
-            localStorage.setItem('f_threads', JSON.stringify(threads));
-            window.dispatchEvent(new Event('storage'));
-            
-            document.getElementById('comm-text').value = "";
-            renderComments();
+        const thread = allThreads.find(t => t.id === activeThreadId);
+        if (!thread) return;
+        
+        const comment = { 
+            author: currentUser, 
+            text, 
+            date: new Date().toLocaleTimeString() 
+        };
+        
+        pubnub.publish({
+            channel: 'onetap-forum',
+            message: {
+                type: 'new_comment',
+                threadId: activeThreadId,
+                comment: comment,
+                timestamp: Date.now()
+            },
+            storeInHistory: true
+        });
+
+        document.getElementById('comm-text').value = "";
+    }
+
+    function updateThreadComments(threadId, comment) {
+        const thread = allThreads.find(t => t.id === threadId);
+        if (thread) {
+            if (!thread.comments) thread.comments = [];
+            thread.comments.push(comment);
+            if (activeThreadId === threadId) {
+                renderComments();
+            }
         }
     }
 
     function renderComments() {
-        const threads = JSON.parse(localStorage.getItem('f_threads') || '[]');
-        const t = threads.find(x => x.id === activeThreadId);
+        const thread = allThreads.find(t => t.id === activeThreadId);
         const container = document.getElementById('comments-list');
         container.innerHTML = "";
         
-        if (t && t.comments && t.comments.length > 0) {
-            t.comments.forEach(c => {
+        if (thread && thread.comments && thread.comments.length > 0) {
+            thread.comments.forEach(c => {
                 container.innerHTML += `<div class="comment"><strong>${c.author}:</strong> ${c.text} <span style="float:right; font-size:8px; color:#333;">${c.date}</span></div>`;
             });
         } else {
@@ -449,11 +551,17 @@
 
     function deleteThread(id, e) {
         e.stopPropagation();
-        let threads = JSON.parse(localStorage.getItem('f_threads') || '[]');
-        threads = threads.filter(x => x.id !== id);
-        localStorage.setItem('f_threads', JSON.stringify(threads));
-        window.dispatchEvent(new Event('storage'));
-        renderThreads();
+        if (currentUser !== "Aidar_OWNER") return;
+        
+        pubnub.publish({
+            channel: 'onetap-forum',
+            message: {
+                type: 'delete_thread',
+                threadId: id,
+                timestamp: Date.now()
+            },
+            storeInHistory: true
+        });
     }
 
     // ==================== AUTH ====================
@@ -545,7 +653,7 @@
     function loginSuccess() {
         const avatar = localStorage.getItem('avatar_' + currentUser) || "https://i.imgur.com";
         document.getElementById('nav-actions').innerHTML = `
-            <img src="${avatar}" class="avatar-img" style="width:25px; height:25px; margin-right:5px; vertical-align:middle;">
+            <div class="avatar-img default-avatar" style="width:25px; height:25px; margin-right:5px; display:inline-flex;">${currentUser.charAt(0).toUpperCase()}</div>
             <span style="color:#fff; cursor:pointer" onclick="openProfile()">${currentUser}</span> 
             <a onclick="logout()">Logout</a>`;
         
@@ -557,14 +665,14 @@
 
     function openProfile() {
         document.getElementById('prof-name-display').innerText = currentUser;
-        document.getElementById('current-avatar').src = localStorage.getItem('avatar_' + currentUser) || "https://i.imgur.com";
+        const avatarDiv = document.getElementById('current-avatar');
+        avatarDiv.innerText = currentUser.charAt(0).toUpperCase();
         showView('profile-view');
     }
 
     function updateProfile() {
         const newName = document.getElementById('set-name').value.trim();
         const newPass = document.getElementById('set-pass').value;
-        const newAvat = document.getElementById('set-avatar').value;
         const errorElement = document.getElementById('profile-name-error');
         
         document.getElementById('set-name').classList.remove('input-error');
@@ -582,19 +690,11 @@
             localStorage.setItem('acc_' + newName, newPass || oldPass);
             localStorage.removeItem('acc_' + currentUser);
             
-            const oldAvatar = localStorage.getItem('avatar_' + currentUser);
-            if (oldAvatar) {
-                localStorage.setItem('avatar_' + newName, oldAvatar);
-                localStorage.removeItem('avatar_' + currentUser);
-            }
-            
             currentUser = newName;
             localStorage.setItem('user', newName);
         } else if (newPass) {
             localStorage.setItem('acc_' + currentUser, newPass);
         }
-        
-        if (newAvat) localStorage.setItem('avatar_' + currentUser, newAvat);
         
         alert("PROFILE UPDATED");
         location.reload();
@@ -616,9 +716,8 @@
 
     function clearAllData() {
         if(currentUser === "Aidar_OWNER" && confirm("WIPE ALL DATA?")) {
-            localStorage.removeItem('f_threads');
-            window.dispatchEvent(new Event('storage'));
-            renderThreads();
+            // Очищаем историю PubNub (не работает через API, только вручную)
+            alert("Can't clear PubNub history via web. Use PubNub admin panel.");
         }
     }
 
