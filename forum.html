@@ -4,6 +4,12 @@
     <meta charset="UTF-8">
     <title>onetap forum</title>
     <style>
+        .role-user { color: var(--accent); }
+        .role-admin { color: var(--admin); font-weight: bold; text-shadow: 0 0 5px rgba(255,68,68,0.5); }
+        .avatar-img { width: 40px; height: 40px; border: 1px solid var(--border); object-fit: cover; margin-right: 10px; }
+        .like-btn { cursor: pointer; color: #444; font-size: 10px; margin-top: 5px; display: inline-block; }
+        .like-btn.active { color: #ff4444; }
+
         :root { --bg: #0a0a0a; --panel: #111; --accent: #3498db; --admin: #ff4444; --border: #1a1a1a; --text: #999; }
         body { background: var(--bg); color: var(--text); font-family: "Segoe UI", sans-serif; margin: 0; font-size: 11px; text-transform: uppercase; }
         nav { background: var(--panel); border-bottom: 1px solid var(--border); padding: 12px 40px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
@@ -38,6 +44,16 @@
         .comment { background: #0d0d0d; padding: 10px; margin-top: 10px; border-left: 2px solid #333; }
 
         .auth-center { grid-column: span 2; width: 300px; margin: 100px auto; }
+        
+        /* Стили для загрузчика */
+        .loader-card { text-align: center; padding: 40px; }
+        .loader-icon { font-size: 48px; color: var(--accent); margin-bottom: 20px; }
+        .download-btn { background: var(--accent); color: #000; padding: 15px 30px; font-size: 14px; margin: 20px 0; }
+        .download-btn:hover { background: #fff; }
+        .version-badge { background: #1a1a1a; color: var(--accent); padding: 5px 10px; border-radius: 3px; display: inline-block; margin: 10px 0; }
+        .features-list { text-align: left; margin-top: 30px; }
+        .features-list li { color: #ccc; margin-bottom: 10px; list-style-type: none; }
+        .features-list li:before { content: ""; color: var(--accent); margin-right: 10px; }
     </style>
 </head>
 <body>
@@ -51,6 +67,23 @@
 </nav>
 
 <div class="container">
+    <!-- PROFILE VIEW -->
+    <div id="profile-view" class="view">
+        <div class="card">
+            <h2>Settings: <span id="prof-name-display"></span></h2>
+            <div style="display:flex; gap: 20px; align-items: flex-start;">
+                <img id="current-avatar" src="https://i.imgur.com" class="avatar-img" style="width:80px; height:80px;">
+                <div style="flex:1">
+                    <input type="text" id="set-name" placeholder="NEW USERNAME">
+                    <input type="text" id="set-avatar" placeholder="AVATAR URL (IMGUR)">
+                    <input type="password" id="set-pass" placeholder="NEW PASSWORD">
+                    <button class="btn" onclick="updateProfile()">SAVE CHANGES</button>
+                    <button class="btn" onclick="showView('main-view')" style="border-color:#444; color:#444">CANCEL</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <!-- LOGIN -->
     <div id="login-view" class="view active auth-center">
         <div class="card">
@@ -82,11 +115,48 @@
                 </div>
 
                 <div class="card">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-                        <h2 style="margin:0; color:#fff;">forum</h2>
-                        <button class="btn" onclick="openCreateModal()">+ New Thread</button>
+                    <div style="display:flex; gap: 10px; margin-bottom:15px;">
+                        <button class="btn" onclick="showForumTab('forum')" id="forum-tab-btn" style="flex:1; background: var(--accent); color: #000;">FORUM</button>
+                        <button class="btn" onclick="showForumTab('loader')" id="loader-tab-btn" style="flex:1;">DOWNLOAD LOADER</button>
                     </div>
-                    <div id="thread-list"></div>
+                    
+                    <!-- Forum Content -->
+                    <div id="forum-content">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                            <h2 style="margin:0; color:#fff;">forum</h2>
+                            <button class="btn" onclick="openCreateModal()">+ New Thread</button>
+                        </div>
+                        <div id="thread-list"></div>
+                    </div>
+                    
+                    <!-- Loader Content -->
+                    <div id="loader-content" style="display: none;">
+                        <div class="loader-card">
+                            <div class="loader-icon">❤️</div>
+                            <h2 style="color:#fff; margin:0;">Onetap Loader</h2>
+                            <div class="version-badge">Version R29.1923a</div>
+                            <p style="color:#666; margin:20px 0;">Best Roblox Script</p>
+                            
+                            <button class="btn download-btn" onclick="downloadLoader()">Download Your Loader</button>
+                            
+                            <div class="features-list">
+                                <h3 style="color:#fff;">Features:</h3>
+                                <ul style="padding-left: 20px;">
+                                    <li>✓ Undetected by anti-cheat</li>
+                                    <li>X Custom script hub</li>
+                                    <li>X Premium scripts included</li>
+                                    <li>X Regular updates</li>
+                                    <li>X No Support</li>
+                                    <li>✓ Lifetime access</li>
+                                </ul>
+                            </div>
+                            
+                            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #222;">
+                                <p style="color:#444;">System Requirements:</p>
+                                <p style="color:#666; font-size:9px;">Windows 10/11 Or Android • 4GB RAM • 8212kb Free Space</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -135,6 +205,7 @@
 </div>
 
 <script>
+    // Профили и Роли
     const INVITES = ["ONETAP-Kk3L8YYLml9CWGk3WO", "ONETAP-INFINITEINVITE", "ONETAP-PUBLIC"];
     let currentUser = localStorage.getItem('user') || "";
     let activeThreadId = null;
@@ -148,6 +219,29 @@
     function showView(id) {
         document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
         document.getElementById(id).classList.add('active');
+    }
+
+    function showForumTab(tab) {
+        const forumContent = document.getElementById('forum-content');
+        const loaderContent = document.getElementById('loader-content');
+        const forumBtn = document.getElementById('forum-tab-btn');
+        const loaderBtn = document.getElementById('loader-tab-btn');
+        
+        if (tab === 'forum') {
+            forumContent.style.display = 'block';
+            loaderContent.style.display = 'none';
+            forumBtn.style.background = 'var(--accent)';
+            forumBtn.style.color = '#000';
+            loaderBtn.style.background = 'transparent';
+            loaderBtn.style.color = 'var(--accent)';
+        } else {
+            forumContent.style.display = 'none';
+            loaderContent.style.display = 'block';
+            loaderBtn.style.background = 'var(--accent)';
+            loaderBtn.style.color = '#000';
+            forumBtn.style.background = 'transparent';
+            forumBtn.style.color = 'var(--accent)';
+        }
     }
 
     // AUTH
@@ -173,11 +267,44 @@
     }
 
     function loginSuccess() {
-        document.getElementById('nav-actions').innerHTML = `<span style="color:#fff">WELCOME, ${currentUser}</span> <a onclick="logout()">Logout</a>`;
+        const avatar = localStorage.getItem('avatar_' + currentUser) || "https://i.imgur.com";
+        document.getElementById('nav-actions').innerHTML = `
+            <img src="${avatar}" class="avatar-img" style="width:25px; height:25px; margin-right:5px; vertical-align:middle;">
+            <span style="color:#fff; cursor:pointer" onclick="openProfile()">${currentUser}</span> 
+            <a onclick="logout()">Logout</a>`;
+        
         if(currentUser === "Aidar_OWNER") {
             document.getElementById('admin-tools').style.display = 'block';
         }
         showView('main-view');
+    }
+
+    function openProfile() {
+        document.getElementById('prof-name-display').innerText = currentUser;
+        document.getElementById('current-avatar').src = localStorage.getItem('avatar_' + currentUser) || "https://i.imgur.com";
+        showView('profile-view');
+    }
+
+    function updateProfile() {
+        const newName = document.getElementById('set-name').value.trim();
+        const newPass = document.getElementById('set-pass').value;
+        const newAvat = document.getElementById('set-avatar').value;
+        
+        if (newName && newName !== currentUser) {
+            // Переносим пароль на новый ключ
+            const oldPass = localStorage.getItem('acc_' + currentUser);
+            localStorage.setItem('acc_' + newName, newPass || oldPass);
+            localStorage.removeItem('acc_' + currentUser);
+            currentUser = newName;
+            localStorage.setItem('user', newName);
+        } else if (newPass) {
+            localStorage.setItem('acc_' + currentUser, newPass);
+        }
+        
+        if (newAvat) localStorage.setItem('avatar_' + currentUser, newAvat);
+        
+        alert("PROFILE UPDATED");
+        location.reload();
     }
 
     function logout() { localStorage.removeItem('user'); location.reload(); }
@@ -195,10 +322,30 @@
 
         let threads = JSON.parse(localStorage.getItem('f_threads') || '[]');
         const id = Date.now();
-        threads.unshift({ id, title, body, author: currentUser, date: new Date().toLocaleString(), comments: [] });
+        threads.unshift({ id, title, body, author: currentUser, date: new Date().toLocaleString(), comments: [], likes: [] });
         localStorage.setItem('f_threads', JSON.stringify(threads));
         
+        document.getElementById('new-t-title').value = "";
+        document.getElementById('new-t-body').value = "";
         openCreateModal();
+        renderThreads();
+    }
+
+    // Лайки
+    function toggleLike(id, e) {
+        e.stopPropagation();
+        let threads = JSON.parse(localStorage.getItem('f_threads') || '[]');
+        const idx = threads.findIndex(x => x.id === id);
+        if (!threads[idx].likes) threads[idx].likes = [];
+        
+        const userIdx = threads[idx].likes.indexOf(currentUser);
+        if (userIdx === -1) {
+            threads[idx].likes.push(currentUser);
+        } else {
+            threads[idx].likes.splice(userIdx, 1);
+        }
+        
+        localStorage.setItem('f_threads', JSON.stringify(threads));
         renderThreads();
     }
 
@@ -207,11 +354,22 @@
         const threads = JSON.parse(localStorage.getItem('f_threads') || '[]');
         list.innerHTML = "";
         threads.forEach(t => {
+            const likes = t.likes ? t.likes.length : 0;
+            const isLiked = t.likes && t.likes.includes(currentUser) ? 'active' : '';
+            const roleClass = t.author === "Aidar_OWNER" ? 'role-admin' : 'role-user';
+            const avatar = localStorage.getItem('avatar_' + t.author) || "https://i.imgur.com";
             const delBtn = currentUser === "Aidar_OWNER" ? `<button class="btn btn-admin" onclick="deleteThread(${t.id}, event)" style="position:absolute; right:10px; top:15px;">DELETE</button>` : "";
+
             list.innerHTML += `
                 <div class="thread-item" onclick="viewThread(${t.id})">
-                    <div style="color:var(--accent); font-size:12px; font-weight:bold;">${t.title}</div>
-                    <div style="font-size:9px; color:#444;">BY ${t.author} • ${t.date}</div>
+                    <div style="display:flex; align-items:center;">
+                        <img src="${avatar}" class="avatar-img" style="width:25px; height:25px;">
+                        <div style="flex:1">
+                            <div style="color:var(--accent); font-size:12px; font-weight:bold;">${t.title}</div>
+                            <div style="font-size:9px; color:#444;">BY <span class="${roleClass}">${t.author}</span> • ${t.date}</div>
+                        </div>
+                        <div class="like-btn ${isLiked}" onclick="toggleLike(${t.id}, event)">❤ ${likes}</div>
+                    </div>
                     ${delBtn}
                 </div>`;
         });
@@ -234,10 +392,13 @@
         if(!text) return;
         let threads = JSON.parse(localStorage.getItem('f_threads') || '[]');
         const tIdx = threads.findIndex(x => x.id === activeThreadId);
-        threads[tIdx].comments.push({ author: currentUser, text, date: new Date().toLocaleTimeString() });
-        localStorage.setItem('f_threads', JSON.stringify(threads));
-        document.getElementById('comm-text').value = "";
-        renderComments();
+        if (tIdx !== -1) {
+            if (!threads[tIdx].comments) threads[tIdx].comments = [];
+            threads[tIdx].comments.push({ author: currentUser, text, date: new Date().toLocaleTimeString() });
+            localStorage.setItem('f_threads', JSON.stringify(threads));
+            document.getElementById('comm-text').value = "";
+            renderComments();
+        }
     }
 
     function renderComments() {
@@ -245,15 +406,20 @@
         const t = threads.find(x => x.id === activeThreadId);
         const container = document.getElementById('comments-list');
         container.innerHTML = "";
-        t.comments.forEach(c => {
-            container.innerHTML += `<div class="comment"><strong>${c.author}:</strong> ${c.text} <span style="float:right; font-size:8px; color:#333;">${c.date}</span></div>`;
-        });
+        if (t && t.comments) {
+            t.comments.forEach(c => {
+                container.innerHTML += `<div class="comment"><strong>${c.author}:</strong> ${c.text} <span style="float:right; font-size:8px; color:#333;">${c.date}</span></div>`;
+            });
+        }
     }
 
     // CHAT LOGIC
     function sendChat() {
         const input = document.getElementById('chat-input');
-        if(!input.value) return;
+        if(!input.value || !currentUser) {
+            if (!currentUser) alert("Please login first");
+            return;
+        }
         let chats = JSON.parse(localStorage.getItem('f_chats') || '[]');
         chats.push({ author: currentUser, msg: input.value, isAdmin: (currentUser === "Aidar_OWNER") });
         if(chats.length > 50) chats.shift();
@@ -273,6 +439,9 @@
         `).join('');
         display.scrollTop = display.scrollHeight;
     }
+
+    // Авто-обновление чата раз в 3 сек
+    setInterval(renderChat, 3000);
 
     // ADMIN FUNCTIONS
     function deleteThread(id, e) {
@@ -295,6 +464,24 @@
         document.getElementById('prem-status').innerText = "Premium Active";
         document.getElementById('prem-status').style.color = "gold";
         alert("Premium For free");
+    }
+
+    // Download Loader Function
+    function downloadLoader() {
+        // Создаем ссылку для скачивания
+        const loaderContent = "loadstring(game:HttpGet('https://raw.githubusercontent.com/onetaprbx/onetaprbx.github.io/refs/heads/main/loadstring.lua'))();\n\nSHA256: 4F8B42D9A1C3E5B7F6D2A8C4E9B1F3D7A5C2E8B4F6D9A1C3E5B7F2D4A6C8E9B1F3\n\nCopy This Loadstring\n\nENJOY❤️";
+        
+        const blob = new Blob([loaderContent], { type: 'text/plain' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'onetap_loader.lua';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+        
+        alert("Download started! Check your downloads folder.");
     }
 
     // Синхронизация
