@@ -1,67 +1,1295 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<title>Error</title>
-<style>
-  html { color-scheme: light dark; }
-  body { 
-    margin: 0;
-    padding: 0; 
-    font-family: Tahoma, Verdana, Arial, sans-serif; 
-    display: flex;
-    justify-content: center;
-    align-items: flex-start; 
-    min-height: 100vh;
-  }
+    <meta charset="UTF-8">
+    <title>onetap forum</title>
+    <!-- PubNub JS -->
+    <script src="https://cdn.pubnub.com/sdk/javascript/pubnub.7.4.3.min.js"></script>
+    <style>
+        /* Все стили остаются без изменений */
+        .role-user { color: var(--accent); }
+        .role-admin { color: var(--admin); font-weight: bold; text-shadow: 0 0 5px rgba(255,68,68,0.5); }
+        .avatar-img { 
+            width: 40px; 
+            height: 40px; 
+            border: 2px solid var(--border); 
+            object-fit: cover; 
+            margin-right: 10px;
+            border-radius: 50%;
+        }
+        .default-avatar {
+            width: 40px;
+            height: 40px;
+            background: var(--accent);
+            color: #000;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-right: 10px;
+        }
+        .like-btn { cursor: pointer; color: #444; font-size: 10px; margin-top: 5px; display: inline-block; }
+        .like-btn.active { color: #ff4444; }
+        .admin-only { 
+            background: rgba(255,68,68,0.1); 
+            border-left: 3px solid var(--admin);
+            padding-left: 10px;
+        }
+        .admin-badge {
+            background: var(--admin);
+            color: #fff;
+            font-size: 8px;
+            padding: 2px 5px;
+            border-radius: 3px;
+            margin-left: 5px;
+        }
+        .thread-image {
+            max-width: 100%;
+            max-height: 300px;
+            margin: 10px 0;
+            border: 1px solid var(--border);
+            border-radius: 5px;
+        }
+        .comment-image {
+            max-width: 200px;
+            max-height: 200px;
+            margin: 5px 0;
+            border: 1px solid var(--border);
+            border-radius: 3px;
+        }
+        .image-upload-area {
+            border: 2px dashed var(--accent);
+            padding: 10px;
+            text-align: center;
+            margin: 10px 0;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        .image-upload-area:hover {
+            background: rgba(52, 152, 219, 0.1);
+        }
+        .image-preview {
+            max-width: 100px;
+            max-height: 100px;
+            margin: 5px;
+            border: 1px solid var(--border);
+            border-radius: 3px;
+        }
+        .avatar-preview {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid var(--accent);
+        }
 
-  /* ТОНКАЯ СТАТИЧНАЯ ШЛЯПА В САМОМ ВЕРХУ */
-  .top-hat {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 3px; 
-    background: linear-gradient(to right, red, orange, yellow, green, cyan, blue, violet);
-    z-index: 100;
-  }
+        :root { --bg: #0a0a0a; --panel: #111; --accent: #3498db; --admin: #ff4444; --border: #1a1a1a; --text: #999; }
+        body { background: var(--bg); color: var(--text); font-family: "Segoe UI", sans-serif; margin: 0; font-size: 11px; text-transform: uppercase; }
+        nav { background: var(--panel); border-bottom: 1px solid var(--border); padding: 12px 40px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
+        .logo { font-size: 18px; font-weight: 900; color: #ffffff; cursor: pointer; letter-spacing: 2px; }
+        .nav-links a { color: #444; text-decoration: none; margin-left: 20px; cursor: pointer; font-weight: bold; }
+        .nav-links a:hover, .active-link { color: var(--accent) !important; }
+        
+        .container { max-width: 1100px; margin: 30px auto; padding: 0 20px; display: grid; grid-template-columns: 1fr 300px; gap: 20px; }
+        .view { display: none; grid-column: span 2; }
+        .view.active { display: block; }
+        .forum-grid { display: grid; grid-template-columns: 1fr 300px; gap: 20px; grid-column: span 2; }
 
-  .error-box {
-    margin-top: 50px; 
-    width: 65em; 
-    padding: 30px;
-    text-align: center;
-    position: relative;
-    
-    /* Твоя анимированная обводка */
-    border: 2px solid transparent;
-    border-image: linear-gradient(to right, red, orange, yellow, green, cyan, blue, violet) 1;
-    animation: rainbow-border 5s linear infinite;
-  }
+        .card { background: var(--panel); border: 1px solid var(--border); border-top: 2px solid var(--accent); padding: 20px; margin-bottom: 20px; }
+        .admin-border { border-top-color: var(--admin) !important; }
+        input, textarea { width: 100%; background: #080808; border: 1px solid var(--border); padding: 10px; color: var(--accent); margin-bottom: 10px; box-sizing: border-box; outline: none; }
+        .btn { background: transparent; border: 1px solid var(--accent); color: var(--accent); padding: 8px 15px; cursor: pointer; font-weight: 900; font-size: 10px; }
+        .btn:hover { background: var(--accent); color: #000; }
+        .btn-admin { border-color: var(--admin); color: var(--admin); }
+        .btn-admin:hover { background: var(--admin); color: #fff; }
 
-  /* АНИМИРОВАННЫЙ ТЕКСТ */
-  h1, p, em {
-    background: linear-gradient(to right, red, orange, yellow, green, cyan, blue, violet);
-    background-size: 200% auto;
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    animation: rainbow-border 5s linear infinite;
-  }
+        .thread-item { padding: 15px; border-bottom: 1px solid #161616; cursor: pointer; transition: 0.2s; position: relative; }
+        .thread-item:hover { background: #141414; }
+        .chat-box { height: 400px; overflow-y: auto; background: #080808; border: 1px solid var(--border); padding: 10px; margin-bottom: 10px; display: flex; flex-direction: column; }
+        .msg { margin-bottom: 8px; font-size: 10px; border-bottom: 1px solid #111; padding-bottom: 4px; }
+        .msg .author { font-weight: bold; color: var(--accent); }
+        .msg .admin-tag { color: var(--admin); font-size: 8px; margin-right: 5px; }
 
-  @keyframes rainbow-border {
-    0% { filter: hue-rotate(0deg); }
-    100% { filter: hue-rotate(360deg); }
-  }
-</style>
+        #single-thread-view { background: var(--panel); border: 1px solid var(--border); padding: 25px; }
+        .comment { background: #0d0d0d; padding: 10px; margin-top: 10px; border-left: 2px solid #333; }
+
+        .auth-center { grid-column: span 2; width: 300px; margin: 100px auto; }
+        
+        .loader-card { text-align: center; padding: 40px; }
+        .loader-icon { font-size: 48px; color: var(--accent); margin-bottom: 20px; }
+        .download-btn { background: var(--accent); color: #000; padding: 15px 30px; font-size: 14px; margin: 20px 0; }
+        .download-btn:hover { background: #fff; }
+        .version-badge { background: #1a1a1a; color: var(--accent); padding: 5px 10px; border-radius: 3px; display: inline-block; margin: 10px 0; }
+        .features-list { text-align: left; margin-top: 30px; }
+        .features-list li { color: #ccc; margin-bottom: 10px; list-style-type: none; }
+        
+        .error-message { color: var(--admin); font-size: 9px; margin-top: -5px; margin-bottom: 10px; display: none; }
+        .input-error { border-color: var(--admin) !important; }
+        .loading { color: var(--accent); text-align: center; padding: 10px; }
+        
+        .forum-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .forum-tab {
+            flex: 1;
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 10px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .forum-tab.active {
+            background: var(--accent);
+            color: #000;
+            border-color: var(--accent);
+        }
+        .forum-tab.admin-tab.active {
+            background: var(--admin);
+            border-color: var(--admin);
+        }
+        .announcement-icon {
+            color: var(--admin);
+            margin-right: 5px;
+        }
+        .file-input {
+            display: none;
+        }
+        .password-hint {
+            color: #666;
+            font-size: 8px;
+            margin-top: -5px;
+            margin-bottom: 10px;
+        }
+    </style>
 </head>
 <body>
-  <div class="top-hat"></div>
 
-  <div class="error-box">
-    <h1>Oh No!</h1>
-    <p>An error occurred.</p>
-    <p>Sorry, the page you are looking for is currently unavailable. Or nginx doesnt launched.<br/>
-    Please try again later. Or report.</p>
-    <p><em>Regards. Onetap team</em></p>
-  </div>
+<nav>
+    <div class="logo" onclick="location.reload()">onetap</div>
+    <div class="nav-links" id="nav-actions">
+        <a onclick="showView('login-view')">Login</a>
+        <a onclick="showView('register-view')">Register</a>
+    </div>
+</nav>
+
+<div class="container">
+    <!-- PROFILE VIEW -->
+    <div id="profile-view" class="view">
+        <div class="card">
+            <h2>Settings: <span id="prof-name-display"></span></h2>
+            <div style="display:flex; gap: 20px; align-items: flex-start;">
+                <div>
+                    <img id="avatar-preview" class="avatar-preview" src="" style="display: none;">
+                    <div id="avatar-placeholder" class="default-avatar" style="width:80px; height:80px; font-size:30px;">?</div>
+                    <button class="btn" onclick="document.getElementById('avatar-upload').click()" style="margin-top:10px;">Choose Avatar</button>
+                    <input type="file" id="avatar-upload" class="file-input" accept="image/*" onchange="previewAvatar(this)">
+                </div>
+                <div style="flex:1">
+                    <input type="text" id="set-name" placeholder="NEW USERNAME">
+                    <div id="profile-name-error" class="error-message"></div>
+                    <input type="password" id="set-pass" placeholder="NEW PASSWORD (max 8 chars)" maxlength="8">
+                    <div class="password-hint">Maximum 8 characters</div>
+                    <button class="btn" onclick="updateProfile()">SAVE CHANGES</button>
+                    <button class="btn" onclick="showView('main-view')" style="border-color:#444; color:#444">CANCEL</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- LOGIN -->
+    <div id="login-view" class="view active auth-center">
+        <div class="card">
+            <h2>SIGN IN</h2>
+            <input type="text" id="log-user" placeholder="USERNAME">
+            <input type="password" id="log-pass" placeholder="PASSWORD">
+            <button class="btn" onclick="login()">LOGIN</button>
+        </div>
+    </div>
+
+    <!-- REGISTER -->
+    <div id="register-view" class="view auth-center">
+        <div class="card">
+            <h2>REGISTER</h2>
+            <input type="text" id="reg-user" placeholder="USERNAME">
+            <div id="register-name-error" class="error-message"></div>
+            <input type="password" id="reg-pass" placeholder="PASSWORD (max 8 chars)" maxlength="8">
+            <div class="password-hint">Maximum 8 characters</div>
+            <input type="text" id="reg-invite" placeholder="INVITE KEY">
+            <button class="btn" onclick="register()">CREATE ACCOUNT</button>
+        </div>
+    </div>
+
+    <!-- MAIN FORUM & CHAT -->
+    <div id="main-view" class="view">
+        <div class="forum-grid">
+            <div class="left-col">
+                <div class="card" id="admin-tools" style="display:none; border-color: var(--admin)">
+                    <h3 style="color: var(--admin); margin: 0 0 10px 0;">ADMIN PANEL: Aidar_OWNER</h3>
+                    <button class="btn btn-admin" onclick="clearAllData()">WIPE ALL DATABASE</button>
+                </div>
+
+                <div class="card">
+                    <div class="forum-tabs">
+                        <button class="forum-tab active" onclick="switchForumTab('general')" id="general-tab">GENERAL</button>
+                        <button class="forum-tab" onclick="switchForumTab('announcements')" id="announcements-tab">📢 ANNOUNCEMENTS</button>
+                        <button class="forum-tab" onclick="switchForumTab('loader')" id="loader-tab">LOADER</button>
+                    </div>
+                    
+                    <div id="general-forum">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                            <h2 style="margin:0; color:#fff;">General Discussion</h2>
+                            <button class="btn" onclick="openCreateModal('general')">+ New Thread</button>
+                        </div>
+                        <div id="general-thread-list"></div>
+                    </div>
+                    
+                    <div id="announcements-forum" style="display: none;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                            <h2 style="margin:0; color: var(--admin);">📢 Announcements</h2>
+                            <button class="btn btn-admin" onclick="openCreateModal('announcements')" id="announcement-create-btn">+ New Announcement</button>
+                        </div>
+                        <div id="announcements-thread-list"></div>
+                    </div>
+                    
+                    <div id="loader-content" style="display: none;">
+                        <div class="loader-card">
+                            <div class="loader-icon">❤️</div>
+                            <h2 style="color:#fff; margin:0;">Onetap Loader</h2>
+                            <div class="version-badge">Version R29.1923a</div>
+                            <p style="color:#666; margin:20px 0;">Best Roblox Script</p>
+                            
+                            <button class="btn download-btn" onclick="downloadLoader()">Download Your Loader</button>
+                            
+                            <div class="features-list">
+                                <h3 style="color:#fff;">Features:</h3>
+                                <ul style="padding-left: 20px;">
+                                    <li>✓ Undetected by anti-cheat</li>
+                                    <li>X Custom script hub</li>
+                                    <li>X Premium scripts included</li>
+                                    <li>X Regular updates</li>
+                                    <li>X No Support</li>
+                                    <li>✓ Lifetime access</li>
+                                </ul>
+                            </div>
+                            
+                            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #222;">
+                                <p style="color:#444;">System Requirements:</p>
+                                <p style="color:#666; font-size:9px;">Windows 10/11 Or Android • 4GB RAM • 8212kb Free Space</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="right-col">
+                <div class="card">
+                    <h3 style="margin-top:0; color:#fff;">LIVE CHAT</h3>
+                    <div class="chat-box" id="chat-display">
+                        <div class="loading">Connecting to chat...</div>
+                    </div>
+                    <input type="text" id="chat-input" placeholder="Type message..." onkeypress="if(event.key==='Enter') sendChat()">
+                    <button class="btn" style="width:100%" onclick="sendChat()">Send</button>
+                </div>
+                <div class="card" id="premium-box">
+                    <h3 style="margin-top:0; color: gold;">Premium</h3>
+                    <p id="prem-status">FREE USER</p>
+                    <button class="btn" style="border-color:gold; color:gold" onclick="buyPremium()">Upgrade</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- THREAD CONTENT VIEW -->
+    <div id="thread-content-view" class="view">
+        <div class="card">
+            <button class="btn" onclick="backToForum()" style="margin-bottom:20px;">< BACK</button>
+            <h1 id="view-title" style="color:#fff; margin:0;"></h1>
+            <p id="view-meta" style="color:#444; font-size:9px;"></p>
+            <div id="view-body" style="margin:20px 0; font-size:12px; color:#ccc;"></div>
+            <div id="view-image" style="margin:20px 0; text-align: center;"></div>
+            
+            <h3>COMMENTS</h3>
+            <div id="comments-list"></div>
+            <hr style="border:0; border-top:1px solid #1a1a1a; margin:20px 0;">
+            <textarea id="comm-text" placeholder="Write a comment..."></textarea>
+            <div class="image-upload-area" onclick="document.getElementById('comment-image-upload').click()">
+                Click to add image to comment (optional)
+            </div>
+            <input type="file" id="comment-image-upload" class="file-input" accept="image/*" onchange="previewCommentImage(this)">
+            <div id="comment-image-preview" style="margin:10px 0;"></div>
+            <button class="btn" onclick="addComment()" id="comment-btn">Post Comment</button>
+            <div id="comment-restriction" style="color: var(--admin); font-size: 9px; margin-top: 5px; display: none;">Only admin can comment in announcements</div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL CREATE -->
+<div id="modal-create" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:1000; justify-content:center; align-items:center;">
+    <div class="card" style="width:500px;">
+        <h2 id="modal-title">Create New Thread</h2>
+        <input type="text" id="new-t-title" placeholder="TITLE">
+        <textarea id="new-t-body" rows="5" placeholder="CONTENT"></textarea>
+        <div class="image-upload-area" onclick="document.getElementById('thread-image-upload').click()">
+            Click to add image to thread (optional)
+        </div>
+        <input type="file" id="thread-image-upload" class="file-input" accept="image/*" onchange="previewThreadImage(this)">
+        <div id="thread-image-preview" style="margin:10px 0;"></div>
+        <button class="btn" onclick="saveThread()">POST</button>
+        <button class="btn" style="border-color:#444; color:#444;" onclick="closeCreateModal()">CANCEL</button>
+    </div>
+</div>
+
+<script>
+    // ==================== PUBNUB ====================
+    const pubnub = new PubNub({
+        publishKey: 'pub-c-698bd967-c710-4941-a221-d3cb4560580a',
+        subscribeKey: 'sub-c-5971ef00-946b-4e49-9690-3e1c89c94533',
+        userId: 'user_' + Math.random().toString(36).substr(2, 9)
+    });
+
+    // ==================== ПЕРЕМЕННЫЕ ====================
+    const INVITES = ["ONETAP-Kk3L8YYLml9CWGk3WO", "ONETAP-INFINITEINVITE", "ONETAP-PUBLIC"];
+    let currentUser = localStorage.getItem('user') || "";
+    let activeThreadId = null;
+    let activeThreadType = null;
+    let currentForumTab = 'general';
+    let currentThreadImage = null;
+    let currentCommentImage = null;
+    let users = [];
+    let usersLoaded = false; // Флаг загрузки пользователей
+
+    let generalThreads = [];
+    let announcementThreads = [];
+
+    // ==================== ЗАГРУЗКА ПОЛЬЗОВАТЕЛЕЙ ====================
+    function loadUsers() {
+        return new Promise((resolve) => {
+            pubnub.history({
+                channel: 'onetap-users',
+                count: 1000
+            }).then((response) => {
+                const messages = response.messages.map(m => m.entry);
+                users = messages.filter(msg => msg.type === 'user_registered').map(msg => ({
+                    username: msg.user.username,
+                    password: msg.user.password,
+                    avatar: msg.user.avatar || null
+                }));
+                console.log('Загружено пользователей:', users.length);
+                usersLoaded = true;
+                resolve();
+            }).catch((error) => {
+                console.error('Ошибка загрузки пользователей:', error);
+                usersLoaded = true; // Все равно помечаем как загруженные
+                resolve();
+            });
+        });
+    }
+
+    // ==================== СОХРАНЕНИЕ ПОЛЬЗОВАТЕЛЯ ====================
+    function saveUserToPubNub(username, password, avatar = null) {
+        const userData = {
+            type: 'user_registered',
+            user: {
+                username: username,
+                password: password,
+                avatar: avatar,
+                registeredAt: new Date().toISOString()
+            }
+        };
+
+        pubnub.publish({
+            channel: 'onetap-users',
+            message: userData,
+            storeInHistory: true
+        });
+
+        // Добавляем в локальный массив
+        users.push({ username, password, avatar });
+        
+        // Сохраняем в localStorage для быстрого доступа
+        localStorage.setItem('acc_' + username, password);
+        if (avatar) {
+            localStorage.setItem('avatar_' + username, avatar);
+        }
+    }
+
+    // ==================== ПОДПИСКА НА ПОЛЬЗОВАТЕЛЕЙ ====================
+    pubnub.subscribe({ channels: ['onetap-users'] });
+
+    pubnub.addListener({
+        message: function(data) {
+            if (data.channel === 'onetap-users') {
+                if (data.message.type === 'user_registered') {
+                    const newUser = {
+                        username: data.message.user.username,
+                        password: data.message.user.password,
+                        avatar: data.message.user.avatar
+                    };
+                    
+                    // Проверяем, есть ли уже такой пользователь
+                    if (!users.some(u => u.username === newUser.username)) {
+                        users.push(newUser);
+                        console.log('Новый пользователь зарегистрирован:', newUser.username);
+                    }
+                }
+            } else if (data.channel === 'onetap-chat') {
+                addMessageToChat(data.message);
+            } else if (data.channel === 'onetap-forum-general') {
+                handleForumMessage('general', data.message);
+            } else if (data.channel === 'onetap-forum-announcements') {
+                handleForumMessage('announcements', data.message);
+            }
+        }
+    });
+
+    // ==================== ИНИЦИАЛИЗАЦИЯ ====================
+    window.onload = async () => {
+        // Показываем загрузку
+        showView('login-view');
+        
+        // Загружаем пользователей
+        await loadUsers();
+        
+        // Проверяем текущего пользователя
+        if(currentUser) {
+            const userExists = users.some(u => u.username === currentUser);
+            if (userExists) {
+                // Загружаем аватар из PubNub если есть
+                const user = users.find(u => u.username === currentUser);
+                if (user?.avatar) {
+                    localStorage.setItem('avatar_' + currentUser, user.avatar);
+                }
+                loginSuccess();
+            } else {
+                // Если пользователь не найден в PubNub, выходим
+                localStorage.removeItem('user');
+                currentUser = "";
+                showView('login-view');
+            }
+        }
+        
+        // Инициализируем остальное
+        initChat();
+        initForum();
+        updateAdminUI();
+        loadUserAvatar();
+    };
+
+    function loadUserAvatar() {
+        if (currentUser) {
+            const savedAvatar = localStorage.getItem('avatar_' + currentUser);
+            if (savedAvatar) {
+                document.getElementById('avatar-preview').src = savedAvatar;
+                document.getElementById('avatar-preview').style.display = 'block';
+                document.getElementById('avatar-placeholder').style.display = 'none';
+            }
+        }
+    }
+
+    function previewAvatar(input) {
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('avatar-preview').src = e.target.result;
+                document.getElementById('avatar-preview').style.display = 'block';
+                document.getElementById('avatar-placeholder').style.display = 'none';
+                window.tempAvatar = e.target.result;
+            }
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    function previewThreadImage(input) {
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                currentThreadImage = e.target.result;
+                document.getElementById('thread-image-preview').innerHTML = 
+                    `<img src="${e.target.result}" class="image-preview">`;
+            }
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    function previewCommentImage(input) {
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                currentCommentImage = e.target.result;
+                document.getElementById('comment-image-preview').innerHTML = 
+                    `<img src="${e.target.result}" class="image-preview">`;
+            }
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    function updateAdminUI() {
+        if (currentUser === "Aidar_OWNER") {
+            document.getElementById('admin-tools').style.display = 'block';
+            document.getElementById('announcement-create-btn').style.display = 'block';
+        } else {
+            document.getElementById('announcement-create-btn').style.display = 'none';
+        }
+    }
+
+    function switchForumTab(tab) {
+        currentForumTab = tab;
+        
+        document.getElementById('general-tab').classList.remove('active');
+        document.getElementById('announcements-tab').classList.remove('active');
+        document.getElementById('loader-tab').classList.remove('active');
+        
+        document.getElementById('general-forum').style.display = 'none';
+        document.getElementById('announcements-forum').style.display = 'none';
+        document.getElementById('loader-content').style.display = 'none';
+        
+        if (tab === 'general') {
+            document.getElementById('general-tab').classList.add('active');
+            document.getElementById('general-forum').style.display = 'block';
+            renderThreads('general');
+        } else if (tab === 'announcements') {
+            document.getElementById('announcements-tab').classList.add('active');
+            document.getElementById('announcements-forum').style.display = 'block';
+            renderThreads('announcements');
+        } else if (tab === 'loader') {
+            document.getElementById('loader-tab').classList.add('active');
+            document.getElementById('loader-content').style.display = 'block';
+        }
+    }
+
+    // ==================== ЧАТ ====================
+    function initChat() {
+        pubnub.subscribe({ channels: ['onetap-chat'] });
+        loadPreviousMessages();
+    }
+
+    function loadPreviousMessages() {
+        pubnub.history({
+            channel: 'onetap-chat',
+            count: 50
+        }).then((response) => {
+            const display = document.getElementById('chat-display');
+            display.innerHTML = '';
+            
+            const messages = response.messages.map(m => m.entry);
+            if (messages.length > 0) {
+                messages.reverse().forEach(msg => addMessageToChat(msg));
+            } else {
+                display.innerHTML = '<div class="msg">No messages yet</div>';
+            }
+        });
+    }
+
+    function addMessageToChat(msg) {
+        const display = document.getElementById('chat-display');
+        const loadingElem = display.querySelector('.loading');
+        if (loadingElem) loadingElem.remove();
+        
+        if (display.innerHTML === '<div class="msg">No messages yet</div>') {
+            display.innerHTML = '';
+        }
+        
+        // Получаем аватар из PubNub или localStorage
+        const user = users.find(u => u.username === msg.author);
+        const avatar = user?.avatar || localStorage.getItem('avatar_' + msg.author);
+        
+        const avatarHtml = avatar ? 
+            `<img src="${avatar}" class="avatar-img" style="width:20px; height:20px;">` : 
+            `<div class="default-avatar" style="width:20px; height:20px; font-size:10px;">${msg.author.charAt(0).toUpperCase()}</div>`;
+        
+        display.innerHTML += `
+            <div class="msg" style="display: flex; align-items: center;">
+                ${avatarHtml}
+                <div style="margin-left: 5px;">
+                    ${msg.is_admin ? '<span class="admin-tag">[ADMIN]</span>' : ''}
+                    <span class="author">${msg.author}:</span> ${msg.text}
+                    <span style="float:right; font-size:8px; color:#333;">${msg.time || ''}</span>
+                </div>
+            </div>
+        `;
+        display.scrollTop = display.scrollHeight;
+    }
+
+    function sendChat() {
+        const input = document.getElementById('chat-input');
+        if(!input.value || !currentUser) {
+            if (!currentUser) alert("Please login first");
+            return;
+        }
+
+        const message = {
+            author: currentUser,
+            text: input.value,
+            is_admin: (currentUser === "Aidar_OWNER"),
+            time: new Date().toLocaleTimeString()
+        };
+
+        pubnub.publish({
+            channel: 'onetap-chat',
+            message: message,
+            storeInHistory: true
+        });
+
+        input.value = "";
+    }
+
+    // ==================== ФОРУМ ====================
+    
+    function initForum() {
+        pubnub.subscribe({ channels: ['onetap-forum-general', 'onetap-forum-announcements'] });
+        loadPreviousThreads('general');
+        loadPreviousThreads('announcements');
+    }
+
+    function handleForumMessage(type, message) {
+        if (message.type === 'new_thread') {
+            if (type === 'general') {
+                generalThreads.unshift(message.thread);
+                if (currentForumTab === 'general') renderThreads('general');
+            } else {
+                announcementThreads.unshift(message.thread);
+                if (currentForumTab === 'announcements') renderThreads('announcements');
+            }
+        } else if (message.type === 'new_comment') {
+            if (type === 'general') {
+                updateThreadComments('general', message.threadId, message.comment);
+            } else {
+                updateThreadComments('announcements', message.threadId, message.comment);
+            }
+        } else if (message.type === 'like_update') {
+            if (type === 'general') {
+                updateThreadLikes('general', message.threadId, message.likes);
+            }
+        } else if (message.type === 'delete_thread') {
+            if (type === 'general') {
+                generalThreads = generalThreads.filter(t => t.id !== message.threadId);
+                if (currentForumTab === 'general') renderThreads('general');
+            } else {
+                announcementThreads = announcementThreads.filter(t => t.id !== message.threadId);
+                if (currentForumTab === 'announcements') renderThreads('announcements');
+            }
+        }
+    }
+
+    function loadPreviousThreads(type) {
+        const channel = type === 'general' ? 'onetap-forum-general' : 'onetap-forum-announcements';
+        
+        pubnub.history({
+            channel: channel,
+            count: 100
+        }).then((response) => {
+            const messages = response.messages.map(m => m.entry);
+            
+            const threadsMap = new Map();
+            
+            messages.forEach(msg => {
+                if (msg.type === 'new_thread') {
+                    threadsMap.set(msg.thread.id, msg.thread);
+                } else if (msg.type === 'new_comment') {
+                    const thread = threadsMap.get(msg.threadId);
+                    if (thread) {
+                        if (!thread.comments) thread.comments = [];
+                        thread.comments.push(msg.comment);
+                    }
+                } else if (msg.type === 'like_update') {
+                    const thread = threadsMap.get(msg.threadId);
+                    if (thread) {
+                        thread.likes = msg.likes;
+                    }
+                } else if (msg.type === 'delete_thread') {
+                    threadsMap.delete(msg.threadId);
+                }
+            });
+            
+            if (type === 'general') {
+                generalThreads = Array.from(threadsMap.values());
+                if (currentForumTab === 'general') renderThreads('general');
+            } else {
+                announcementThreads = Array.from(threadsMap.values());
+                if (currentForumTab === 'announcements') renderThreads('announcements');
+            }
+        });
+    }
+
+    function openCreateModal(type) {
+        if (!currentUser) {
+            alert("Please login first");
+            return;
+        }
+        
+        if (type === 'announcements' && currentUser !== "Aidar_OWNER") {
+            alert("Only admin can create announcements");
+            return;
+        }
+        
+        currentThreadType = type;
+        document.getElementById('modal-title').innerText = type === 'general' ? 'Create New Thread' : 'Create New Announcement';
+        document.getElementById('modal-create').style.display = 'flex';
+    }
+
+    function closeCreateModal() {
+        document.getElementById('modal-create').style.display = 'none';
+        document.getElementById('new-t-title').value = "";
+        document.getElementById('new-t-body').value = "";
+        document.getElementById('thread-image-preview').innerHTML = "";
+        currentThreadImage = null;
+    }
+
+    function saveThread() {
+        const title = document.getElementById('new-t-title').value;
+        const body = document.getElementById('new-t-body').value;
+        if(!title || !body || !currentUser) return;
+
+        const newThread = { 
+            id: Date.now(),
+            title, 
+            body, 
+            author: currentUser, 
+            date: new Date().toLocaleString(), 
+            comments: [], 
+            likes: [],
+            image: currentThreadImage || null
+        };
+
+        const channel = currentThreadType === 'general' ? 'onetap-forum-general' : 'onetap-forum-announcements';
+
+        pubnub.publish({
+            channel: channel,
+            message: {
+                type: 'new_thread',
+                thread: newThread,
+                timestamp: Date.now()
+            },
+            storeInHistory: true
+        });
+
+        closeCreateModal();
+    }
+
+    function renderThreads(type) {
+        const listId = type === 'general' ? 'general-thread-list' : 'announcements-thread-list';
+        const list = document.getElementById(listId);
+        const threads = type === 'general' ? generalThreads : announcementThreads;
+        
+        list.innerHTML = "";
+        
+        if (threads.length === 0) {
+            list.innerHTML = '<div class="thread-item">No threads yet</div>';
+            return;
+        }
+        
+        const sortedThreads = [...threads].sort((a, b) => b.id - a.id);
+        
+        sortedThreads.forEach(t => {
+            const likes = t.likes ? t.likes.length : 0;
+            const isLiked = t.likes && t.likes.includes(currentUser) ? 'active' : '';
+            const roleClass = t.author === "Aidar_OWNER" ? 'role-admin' : 'role-user';
+            
+            // Получаем аватар из PubNub или localStorage
+            const user = users.find(u => u.username === t.author);
+            const avatar = user?.avatar || localStorage.getItem('avatar_' + t.author);
+            
+            const avatarHtml = avatar ? 
+                `<img src="${avatar}" class="avatar-img" style="width:25px; height:25px;">` : 
+                `<div class="default-avatar" style="width:25px; height:25px; font-size:12px;">${t.author.charAt(0).toUpperCase()}</div>`;
+            
+            const delBtn = currentUser === "Aidar_OWNER" ? `<button class="btn btn-admin" onclick="deleteThread('${type}', ${t.id}, event)" style="position:absolute; right:10px; top:15px;">DELETE</button>` : "";
+
+            list.innerHTML += `
+                <div class="thread-item ${type === 'announcements' ? 'admin-only' : ''}" onclick="viewThread('${type}', ${t.id})">
+                    <div style="display:flex; align-items:center;">
+                        ${avatarHtml}
+                        <div style="flex:1">
+                            <div style="color:${type === 'announcements' ? 'var(--admin)' : 'var(--accent)'}; font-size:12px; font-weight:bold;">
+                                ${type === 'announcements' ? '📢 ' : ''}${t.title}
+                                ${type === 'announcements' ? '<span class="admin-badge">ANNOUNCEMENT</span>' : ''}
+                                ${t.image ? ' 📷' : ''}
+                            </div>
+                            <div style="font-size:9px; color:#444;">BY <span class="${roleClass}">${t.author}</span> • ${t.date}</div>
+                        </div>
+                        ${type === 'general' ? `<div class="like-btn ${isLiked}" onclick="toggleLike('${type}', ${t.id}, event)">❤ ${likes}</div>` : ''}
+                    </div>
+                    ${delBtn}
+                </div>`;
+        });
+    }
+
+    function toggleLike(type, id, e) {
+        e.stopPropagation();
+        if (type !== 'general') return;
+        
+        const thread = generalThreads.find(t => t.id === id);
+        if (!thread) return;
+        
+        if (!thread.likes) thread.likes = [];
+        
+        const userIdx = thread.likes.indexOf(currentUser);
+        if (userIdx === -1) {
+            thread.likes.push(currentUser);
+        } else {
+            thread.likes.splice(userIdx, 1);
+        }
+
+        pubnub.publish({
+            channel: 'onetap-forum-general',
+            message: {
+                type: 'like_update',
+                threadId: id,
+                likes: thread.likes,
+                timestamp: Date.now()
+            },
+            storeInHistory: true
+        });
+    }
+
+    function updateThreadLikes(type, threadId, likes) {
+        if (type === 'general') {
+            const thread = generalThreads.find(t => t.id === threadId);
+            if (thread) {
+                thread.likes = likes;
+                if (currentForumTab === 'general') renderThreads('general');
+            }
+        }
+    }
+
+    function viewThread(type, id) {
+        const threads = type === 'general' ? generalThreads : announcementThreads;
+        const t = threads.find(x => x.id === id);
+        if(!t) return;
+        
+        activeThreadId = id;
+        activeThreadType = type;
+        
+        document.getElementById('view-title').innerText = t.title;
+        document.getElementById('view-meta').innerText = `POSTED BY ${t.author} ON ${t.date}`;
+        document.getElementById('view-body').innerText = t.body;
+        
+        if (t.image) {
+            document.getElementById('view-image').innerHTML = `<img src="${t.image}" class="thread-image">`;
+        } else {
+            document.getElementById('view-image').innerHTML = '';
+        }
+        
+        if (type === 'announcements' && currentUser !== "Aidar_OWNER") {
+            document.getElementById('comment-btn').style.display = 'none';
+            document.getElementById('comment-restriction').style.display = 'block';
+            document.getElementById('comm-text').disabled = true;
+            document.querySelector('.image-upload-area').style.display = 'none';
+        } else {
+            document.getElementById('comment-btn').style.display = 'block';
+            document.getElementById('comment-restriction').style.display = 'none';
+            document.getElementById('comm-text').disabled = false;
+            document.querySelector('.image-upload-area').style.display = 'block';
+        }
+        
+        renderComments(type);
+        showView('thread-content-view');
+    }
+
+    function backToForum() {
+        showView('main-view');
+        document.getElementById('comment-image-preview').innerHTML = '';
+        currentCommentImage = null;
+    }
+
+    function addComment() {
+        const text = document.getElementById('comm-text').value;
+        if(!text && !currentCommentImage) return;
+        
+        if (activeThreadType === 'announcements' && currentUser !== "Aidar_OWNER") {
+            alert("Only admin can comment on announcements");
+            return;
+        }
+        
+        const threads = activeThreadType === 'general' ? generalThreads : announcementThreads;
+        const thread = threads.find(t => t.id === activeThreadId);
+        if (!thread) return;
+        
+        const comment = { 
+            author: currentUser, 
+            text: text || null, 
+            image: currentCommentImage || null,
+            date: new Date().toLocaleTimeString() 
+        };
+        
+        const channel = activeThreadType === 'general' ? 'onetap-forum-general' : 'onetap-forum-announcements';
+        
+        pubnub.publish({
+            channel: channel,
+            message: {
+                type: 'new_comment',
+                threadId: activeThreadId,
+                comment: comment,
+                timestamp: Date.now()
+            },
+            storeInHistory: true
+        });
+
+        document.getElementById('comm-text').value = "";
+        document.getElementById('comment-image-preview').innerHTML = "";
+        currentCommentImage = null;
+    }
+
+    function updateThreadComments(type, threadId, comment) {
+        const threads = type === 'general' ? generalThreads : announcementThreads;
+        const thread = threads.find(t => t.id === threadId);
+        if (thread) {
+            if (!thread.comments) thread.comments = [];
+            thread.comments.push(comment);
+            if (activeThreadId === threadId && activeThreadType === type) {
+                renderComments(type);
+            }
+        }
+    }
+
+    function renderComments(type) {
+        const threads = type === 'general' ? generalThreads : announcementThreads;
+        const thread = threads.find(t => t.id === activeThreadId);
+        const container = document.getElementById('comments-list');
+        container.innerHTML = "";
+        
+        if (thread && thread.comments && thread.comments.length > 0) {
+            thread.comments.forEach(c => {
+                // Получаем аватар из PubNub или localStorage
+                const user = users.find(u => u.username === c.author);
+                const avatar = user?.avatar || localStorage.getItem('avatar_' + c.author);
+                
+                const avatarHtml = avatar ? 
+                    `<img src="${avatar}" style="width:20px; height:20px; border-radius:50%; margin-right:5px;">` : 
+                    `<div class="default-avatar" style="width:20px; height:20px; font-size:10px; display:inline-flex;">${c.author.charAt(0).toUpperCase()}</div>`;
+                
+                let commentHtml = `<div class="comment"><div style="display: flex; align-items: center;">${avatarHtml}<strong>${c.author}:</strong></div>`;
+                if (c.text) commentHtml += `<div style="margin-left: 25px;">${c.text}</div>`;
+                if (c.image) commentHtml += `<div style="margin-left: 25px;"><img src="${c.image}" class="comment-image"></div>`;
+                commentHtml += `<span style="float:right; font-size:8px; color:#333;">${c.date}</span></div>`;
+                
+                container.innerHTML += commentHtml;
+            });
+        } else {
+            container.innerHTML = '<div class="comment">No comments yet</div>';
+        }
+    }
+
+    function deleteThread(type, id, e) {
+        e.stopPropagation();
+        if (currentUser !== "Aidar_OWNER") return;
+        
+        const channel = type === 'general' ? 'onetap-forum-general' : 'onetap-forum-announcements';
+        
+        pubnub.publish({
+            channel: channel,
+            message: {
+                type: 'delete_thread',
+                threadId: id,
+                timestamp: Date.now()
+            },
+            storeInHistory: true
+        });
+    }
+
+    // ==================== AUTH ====================
+    
+    function showView(id) {
+        document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+    }
+
+    function userExists(username) {
+        if (!username) return false;
+        return users.some(u => u.username.toLowerCase() === username.toLowerCase());
+    }
+
+    function getUserPassword(username) {
+        const user = users.find(u => u.username.toLowerCase() === username.toLowerCase());
+        return user ? user.password : null;
+    }
+
+    function validatePassword(password) {
+        if (password.length > 8) {
+            return "Password must be 8 characters or less";
+        }
+        if (password.length < 3) {
+            return "Password must be at least 3 characters";
+        }
+        return null;
+    }
+
+    function register() {
+        const u = document.getElementById('reg-user').value.trim();
+        const p = document.getElementById('reg-pass').value;
+        const i = document.getElementById('reg-invite').value.trim().toUpperCase();
+        const errorElement = document.getElementById('register-name-error');
+        
+        document.getElementById('reg-user').classList.remove('input-error');
+        errorElement.style.display = 'none';
+        
+        if (!u) {
+            errorElement.innerText = "Username cannot be empty";
+            errorElement.style.display = 'block';
+            document.getElementById('reg-user').classList.add('input-error');
+            return;
+        }
+        
+        if (userExists(u)) {
+            errorElement.innerText = "This username is already taken";
+            errorElement.style.display = 'block';
+            document.getElementById('reg-user').classList.add('input-error');
+            return;
+        }
+        
+        const passwordError = validatePassword(p);
+        if (passwordError) {
+            errorElement.innerText = passwordError;
+            errorElement.style.display = 'block';
+            document.getElementById('reg-user').classList.add('input-error');
+            return;
+        }
+        
+        if(INVITES.includes(i)) {
+            // Сохраняем аватар если есть
+            const avatar = window.tempAvatar || null;
+            
+            // Сохраняем в PubNub
+            saveUserToPubNub(u, p, avatar);
+            
+            // Устанавливаем текущего пользователя
+            currentUser = u;
+            localStorage.setItem('user', u);
+            
+            alert("Registration successful! You are now logged in.");
+            loginSuccess();
+        } else { 
+            alert("Invalid Invite"); 
+        }
+    }
+
+    function login() {
+        const u = document.getElementById('log-user').value.trim();
+        const p = document.getElementById('log-pass').value;
+        
+        if (!u || !p) {
+            alert("Please enter username and password");
+            return;
+        }
+        
+        // Проверяем в PubNub
+        const userPassword = getUserPassword(u);
+        
+        if (userPassword === p) {
+            currentUser = u;
+            localStorage.setItem('user', u);
+            
+            // Загружаем аватар если есть
+            const user = users.find(user => user.username === u);
+            if (user?.avatar) {
+                localStorage.setItem('avatar_' + u, user.avatar);
+            }
+            
+            loginSuccess();
+        } else {
+            alert("Wrong Credentials");
+        }
+    }
+
+    function loginSuccess() {
+        const user = users.find(u => u.username === currentUser);
+        const avatar = user?.avatar || localStorage.getItem('avatar_' + currentUser);
+        
+        document.getElementById('nav-actions').innerHTML = `
+            <div style="display: flex; align-items: center;">
+                <img id="nav-avatar" src="${avatar || ''}" style="width:25px; height:25px; border-radius:50%; margin-right:5px; ${avatar ? '' : 'display: none;'}">
+                <div id="nav-avatar-placeholder" class="default-avatar" style="width:25px; height:25px; font-size:12px; ${avatar ? 'display: none;' : ''}">${currentUser.charAt(0).toUpperCase()}</div>
+                <span style="color:#fff; cursor:pointer; margin-right:10px;" onclick="openProfile()">${currentUser}</span> 
+                <a onclick="logout()">Logout</a>
+            </div>`;
+        
+        if (avatar) {
+            document.getElementById('nav-avatar').style.display = 'block';
+            document.getElementById('nav-avatar-placeholder').style.display = 'none';
+        }
+        
+        updateAdminUI();
+        showView('main-view');
+    }
+
+    function openProfile() {
+        document.getElementById('prof-name-display').innerText = currentUser;
+        const savedAvatar = localStorage.getItem('avatar_' + currentUser);
+        if (savedAvatar) {
+            document.getElementById('avatar-preview').src = savedAvatar;
+            document.getElementById('avatar-preview').style.display = 'block';
+            document.getElementById('avatar-placeholder').style.display = 'none';
+        }
+        showView('profile-view');
+    }
+
+    function updateProfile() {
+        const newName = document.getElementById('set-name').value.trim();
+        const newPass = document.getElementById('set-pass').value;
+        const errorElement = document.getElementById('profile-name-error');
+        
+        document.getElementById('set-name').classList.remove('input-error');
+        errorElement.style.display = 'none';
+        
+        if (newName && newName !== currentUser) {
+            if (userExists(newName)) {
+                errorElement.innerText = "This username is already taken";
+                errorElement.style.display = 'block';
+                document.getElementById('set-name').classList.add('input-error');
+                return;
+            }
+            
+            // Удаляем старого пользователя из массива
+            users = users.filter(u => u.username !== currentUser);
+            
+            // Добавляем нового
+            const avatar = window.tempAvatar || localStorage.getItem('avatar_' + currentUser);
+            users.push({ username: newName, password: newPass, avatar: avatar });
+            
+            // Обновляем localStorage
+            localStorage.removeItem('acc_' + currentUser);
+            localStorage.removeItem('avatar_' + currentUser);
+            localStorage.setItem('acc_' + newName, newPass);
+            if (avatar) localStorage.setItem('avatar_' + newName, avatar);
+            
+            currentUser = newName;
+            localStorage.setItem('user', newName);
+            
+            // Публикуем обновление в PubNub
+            pubnub.publish({
+                channel: 'onetap-users',
+                message: {
+                    type: 'user_registered',
+                    user: {
+                        username: newName,
+                        password: newPass,
+                        avatar: avatar,
+                        updatedAt: new Date().toISOString()
+                    }
+                },
+                storeInHistory: true
+            });
+            
+        } else if (newPass) {
+            const passwordError = validatePassword(newPass);
+            if (passwordError) {
+                errorElement.innerText = passwordError;
+                errorElement.style.display = 'block';
+                return;
+            }
+            
+            // Обновляем пароль
+            const user = users.find(u => u.username === currentUser);
+            if (user) {
+                user.password = newPass;
+            }
+            localStorage.setItem('acc_' + currentUser, newPass);
+            
+            // Публикуем обновление
+            pubnub.publish({
+                channel: 'onetap-users',
+                message: {
+                    type: 'user_registered',
+                    user: {
+                        username: currentUser,
+                        password: newPass,
+                        avatar: localStorage.getItem('avatar_' + currentUser),
+                        updatedAt: new Date().toISOString()
+                    }
+                },
+                storeInHistory: true
+            });
+        }
+        
+        if (window.tempAvatar) {
+            localStorage.setItem('avatar_' + currentUser, window.tempAvatar);
+            
+            // Обновляем аватар в массиве
+            const user = users.find(u => u.username === currentUser);
+            if (user) {
+                user.avatar = window.tempAvatar;
+            }
+            window.tempAvatar = null;
+            
+            // Публикуем обновление аватара
+            pubnub.publish({
+                channel: 'onetap-users',
+                message: {
+                    type: 'user_registered',
+                    user: {
+                        username: currentUser,
+                        password: localStorage.getItem('acc_' + currentUser),
+                        avatar: window.tempAvatar,
+                        updatedAt: new Date().toISOString()
+                    }
+                },
+                storeInHistory: true
+            });
+        }
+        
+        alert("PROFILE UPDATED");
+        location.reload();
+    }
+
+    function logout() { 
+        localStorage.removeItem('user'); 
+        location.reload(); 
+    }
+
+    function clearAllData() {
+        if(currentUser === "Aidar_OWNER" && confirm("WIPE ALL DATA?")) {
+            if(confirm("Are you sure you want to delete ALL users and messages?")) {
+                // Очищаем PubNub (не полностью, но помечаем)
+                pubnub.publish({
+                    channel: 'onetap-users',
+                    message: {
+                        type: 'clear_all_data',
+                        admin: currentUser,
+                        timestamp: Date.now()
+                    },
+                    storeInHistory: true
+                });
+                
+                // Очищаем локальные данные
+                users = [];
+                generalThreads = [];
+                announcementThreads = [];
+                
+                // Очищаем localStorage
+                localStorage.clear();
+                
+                alert("Data cleared. Page will reload.");
+                location.reload();
+            }
+        }
+    }
+
+    function buyPremium() {
+        document.getElementById('prem-status').innerText = "Premium Active";
+        document.getElementById('prem-status').style.color = "gold";
+        alert("Premium For free");
+    }
+
+    function downloadLoader() {
+        const loaderContent = "loadstring(game:HttpGet('https://raw.githubusercontent.com/onetaprbx/onetaprbx.github.io/refs/heads/main/loadstring.lua'))();\n\nSHA256: 4F8B42D9A1C3E5B7F6D2A8C4E9B1F3D7A5C2E8B4F6D9A1C3E5B7F2D4A6C8E9B1F3\n\nCopy This Loadstring\n\nENJOY❤️";
+        
+        const blob = new Blob([loaderContent], { type: 'text/plain' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'onetap_loader.lua';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+        
+        alert("Download started! Check your downloads folder.");
+    }
+</script>
 </body>
 </html>
