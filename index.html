@@ -1,70 +1,118 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html>
 <head>
     <meta charset="UTF-8">
-    <!-- Редирект через 3 секунды на нужный адрес -->
-    <meta http-equiv="refresh" content="3; url=https://onetaprbx.github.io/forum/">
-    <title>Redirecting...</title>
+    <title>my links</title>
     <style>
         body {
-            background-color: #0b0b0b; /* Темный фон форума */
-            color: #cccccc;           /* Серый текст */
-            font-family: "Segoe UI", Tahoma, Verdana, sans-serif;
+            background: black;
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
-            margin: 0;
         }
-
-        .redirect-box {
-            background-color: #1a1a1a; /* Цвет блока сообщения */
-            border: 1px solid #333;
-            padding: 30px;
+        
+        .container {
             text-align: center;
-            max-width: 500px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            padding: 20px;
         }
-
-        h2 {
-            color: #e0e0e0;
-            font-size: 18px;
-            margin-bottom: 15px;
-            font-weight: normal;
+        
+        h1 {
+            color: #00ff00;
+            font-size: 36px;
+            margin-bottom: 50px;
+            font-family: 'Courier New', monospace;
+            text-transform: uppercase;
+            letter-spacing: 3px;
         }
-
-        p {
+        
+        .button {
+            display: block;
+            width: 300px;
+            margin: 20px auto;
+            padding: 20px 0;
+            background: black;
+            color: #00ff00;
+            border: 3px solid #00ff00;
+            font-size: 24px;
+            font-weight: bold;
+            text-decoration: none;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .button:hover {
+            background: #00ff00;
+            color: black;
+            transform: scale(1.05);
+        }
+        
+        .button:active {
+            transform: scale(0.95);
+        }
+        
+        .footer {
+            color: #006600;
+            margin-top: 50px;
             font-size: 14px;
-            margin-bottom: 20px;
+            font-family: 'Courier New', monospace;
         }
-
-        .loader {
-            color: #5c7080;
-            font-size: 12px;
-            text-decoration: none;
+        
+        .blink {
+            animation: blink 1s step-end infinite;
+            color: #00ff00;
+            font-size: 20px;
+            margin-top: 30px;
         }
-
-        .loader a {
-            color: #828282;
-            text-decoration: none;
-        }
-
-        .loader a:hover {
-            text-decoration: underline;
+        
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
         }
     </style>
 </head>
 <body>
-
-    <div class="redirect-box">
-        <h2>Redirecting...</h2>
-        <p>Please wait</p>
+    <div class="container">
+        <h1>oMg KaMiDeRe UpDaTeD!??!?!</h1>
         
-        <div class="loader">
-            If your browser doesnt support redirect, <br>
-            <a href="https://onetaprbx.github.io/forum/">click here</a>.
+        <!-- Кнопка 1 -->
+        <a href="https://github.com/aidarkunakbaev2" class="button" target="_blank">
+            my github
+        </a>
+        
+        <!-- Кнопка 2 -->
+        <a href="https://onetaprbx.github.io/PS3/jb" class="button" target="_blank">
+            ps3 jailbreak webkit
+        </a>
+        
+        <!-- Кнопка 3 -->
+        <a href="https://onetaprbx.github.io/forum/" class="button" target="_blank">
+            forum
+        </a>
+        
+        <div class="blink">
+            █
+        </div>
+        
+        <div class="footer">
+              {  WebKit Team all cl is easy for us. }
         </div>
     </div>
-
+    
+    <script>
+        // Простой скрипт для определения PS3
+        window.onload = function() {
+            if(navigator.userAgent.includes('exploit gang') || 
+               navigator.userAgent.includes('ExPlOiT gAnG')) {
+                console.log('jAiLbReAk DeTeCtEd');
+            }
+        }
+    </script>
 </body>
 </html>
