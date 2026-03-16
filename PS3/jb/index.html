@@ -132,19 +132,19 @@
         <h1>PS3 JAILBREAK 4.89/4.90</h1>
         
         <div class="status">
-            [СТАТУС] <span id="status">Ожидаем PS3...</span>
+            [status] <span id="status">waiting for PS3...</span>
             <span class="blink">_</span>
         </div>
         
         <div class="info">
-            <div>Версия: <span id="fw">4.89</span></div>
-            <div>Эксплойт: WebKit ROP</div>
-            <div>Метод: CVE-2021-1789</div>
-            <div>Цель: HFW/CFW</div>
+            <div>ver: <span id="fw">4.89</span></div>
+            <div>expl: WebKit ROP</div>
+            <div>method: CVE-2021-1789</div>
+            <div>aiming at: HFW/CFW</div>
         </div>
         
-        <button onclick="checkPS3()" id="checkBtn">[1] ПРОВЕРИТЬ PS3</button>
-        <button onclick="runExploit()" id="exploitBtn" disabled>[2] ЗАПУСТИТЬ EXPLOIT</button>
+        <button onclick="checkPS3()" id="checkBtn">[1] check ps3 connection</button>
+        <button onclick="runExploit()" id="exploitBtn" disabled>[2] launch exploit</button>
         
         <div class="progress" id="progress">
             <div class="progress-fill" id="progressBar"></div>
@@ -311,7 +311,7 @@
                 addLog('RUNNING ON PS3');
                 checkPS3();
             } else {
-                addLog('running on PC - open on PS3');
+                addLog('running on PC - open on PS3 or use emu:)');
             }
         };
     </script>
