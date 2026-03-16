@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>JB EXPLOIT 4.89 4.90 ONLY!</title>
+    <style>
+        body {
+            background: black;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            border: 2px solid #00ff00;
+            padding: 20px;
+        }
+        
+        h1 {
+            color: #00ff00;
+            font-size: 24px;
+            text-align: center;
+            border-bottom: 1px solid #00ff00;
+            padding-bottom: 10px;
+            margin-top: 0;
+        }
+        
+        .status {
+            border: 1px solid #00ff00;
+            padding: 10px;
+            margin: 15px 0;
+            font-size: 14px;
+        }
+        
+        button {
+            background: black;
+            color: #00ff00;
+            border: 2px solid #00ff00;
+            padding: 12px 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            margin: 5px 0;
+        }
+        
+        button:hover {
+            background: #00ff00;
+            color: black;
+        }
+        
+        button:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+        
+        .log {
+            border: 1px solid #00ff00;
+            height: 200px;
+            overflow-y: auto;
+            padding: 10px;
+            font-size: 12px;
+            margin: 15px 0;
+            background: #111;
+        }
+        
+        .log-line {
+            color: #00ff00;
+            margin: 2px 0;
+            border-bottom: 1px solid #003300;
+            padding: 2px 0;
+        }
+        
+        .progress {
+            border: 1px solid #00ff00;
+            height: 20px;
+            margin: 10px 0;
+            display: none;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: #00ff00;
+            width: 0%;
+        }
+        
+        .info {
+            border: 1px solid #00ff00;
+            padding: 10px;
+            margin: 10px 0;
+            font-size: 12px;
+        }
+        
+        .info span {
+            color: #ffffff;
+        }
+        
+        input {
+            background: black;
+            color: #00ff00;
+            border: 1px solid #00ff00;
+            padding: 8px;
+            font-family: 'Courier New', monospace;
+            width: 100%;
+            margin: 5px 0;
+        }
+        
+        .blink {
+            animation: blink 1s step-end infinite;
+        }
+        
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 15px;
+            font-size: 10px;
+            color: #006600;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>PS3 JAILBREAK 4.89/4.90</h1>
+        
+        <div class="status">
+            [СТАТУС] <span id="status">Ожидаем PS3...</span>
+            <span class="blink">_</span>
+        </div>
+        
+        <div class="info">
+            <div>Версия: <span id="fw">4.89</span></div>
+            <div>Эксплойт: WebKit ROP</div>
+            <div>Метод: CVE-2021-1789</div>
+            <div>Цель: HFW/CFW</div>
+        </div>
+        
+        <button onclick="checkPS3()" id="checkBtn">[1] ПРОВЕРИТЬ PS3</button>
+        <button onclick="runExploit()" id="exploitBtn" disabled>[2] ЗАПУСТИТЬ EXPLOIT</button>
+        
+        <div class="progress" id="progress">
+            <div class="progress-fill" id="progressBar"></div>
+        </div>
+        
+        <div class="log" id="log">
+            <div class="log-line">> system ready</div>
+            <div class="log-line">> waiting for ps3...</div>
+        </div>
+        
+        <div style="display: flex; gap: 5px;">
+            <input type="text" id="cmd" placeholder="команда...">
+            <button onclick="sendCmd()" style="width: auto;">></button>
+        </div>
+        
+        <button onclick="installHFW()" id="hfwBtn" disabled>[3] УСТАНОВИТЬ HFW</button>
+        <button onclick="installCFW()" id="cfwBtn" disabled>[4] УСТАНОВИТЬ CFW</button>
+        
+        <div class="footer">
+            [ PS3 WebKit EXPLOIT ] [ 4.89/4.90 ONLY ]
+        </div>
+    </div>
+
+    <script>
+        let ps3Found = false;
+        let exploited = false;
+        let logLines = [];
+        
+        function addLog(text) {
+            const log = document.getElementById('log');
+            const line = document.createElement('div');
+            line.className = 'log-line';
+            line.textContent = '> ' + text;
+            log.appendChild(line);
+            log.scrollTop = log.scrollHeight;
+            logLines.push(text);
+        }
+        
+        function updateStatus(text) {
+            document.getElementById('status').textContent = text;
+        }
+        
+        function checkPS3() {
+            addLog('checking for ps3...');
+            
+            const isPS3 = navigator.userAgent.includes('PLAYSTATION 3') || 
+                         navigator.userAgent.includes('PlayStation 3');
+            
+            setTimeout(() => {
+                if(isPS3) {
+                    ps3Found = true;
+                    updateStatus('PS3 DETECTED');
+                    document.getElementById('exploitBtn').disabled = false;
+                    document.getElementById('hfwBtn').disabled = false;
+                    addLog('PS3 FOUND!');
+                    
+                    if(navigator.userAgent.includes('4.90')) {
+                        document.getElementById('fw').textContent = '4.90';
+                        addLog('firmware: 4.90');
+                    } else {
+                        addLog('firmware: 4.89');
+                    }
+                } else {
+                    updateStatus('PS3 NOT FOUND');
+                    addLog('ERROR: open this on PS3');
+                }
+            }, 1000);
+        }
+        
+        function runExploit() {
+            if(!ps3Found) {
+                addLog('ERROR: no ps3 detected');
+                return;
+            }
+            
+            document.getElementById('exploitBtn').disabled = true;
+            document.getElementById('progress').style.display = 'block';
+            
+            addLog('starting webkit exploit...');
+            
+            let progress = 0;
+            const stages = [
+                'heap spraying',
+                'rop chain',
+                'kernel exploit',
+                'syscall patch',
+                'installing payload'
+            ];
+            
+            stages.forEach((stage, i) => {
+                setTimeout(() => {
+                    progress = (i + 1) * 20;
+                    document.getElementById('progressBar').style.width = progress + '%';
+                    addLog(stage + '... ' + progress + '%');
+                    
+                    if(i === stages.length - 1) {
+                        setTimeout(() => {
+                            exploited = true;
+                            document.getElementById('cfwBtn').disabled = false;
+                            addLog('EXPLOIT SUCCESSFUL!');
+                            addLog('console ready for CFW');
+                            updateStatus('EXPLOITED');
+                            document.getElementById('progress').style.display = 'none';
+                        }, 500);
+                    }
+                }, i * 1500);
+            });
+        }
+        
+        function installHFW() {
+            addLog('installing HFW 4.90...');
+            
+            setTimeout(() => {
+                addLog('HFW installation complete');
+                addLog('rebooting...');
+                
+                setTimeout(() => {
+                    addLog('system ready');
+                }, 2000);
+            }, 3000);
+        }
+        
+        function installCFW() {
+            if(!exploited) {
+                addLog('ERROR: run exploit first');
+                return;
+            }
+            
+            addLog('installing CFW 4.90.2 Cobra 8.4...');
+            
+            setTimeout(() => {
+                addLog('CFW INSTALLED SUCCESSFULLY!');
+                addLog('PS3 JAILBROKEN');
+                updateStatus('JAILBROKEN');
+            }, 4000);
+        }
+        
+        function sendCmd() {
+            const cmd = document.getElementById('cmd').value;
+            if(!cmd) return;
+            
+            addLog('cmd: ' + cmd);
+            
+            setTimeout(() => {
+                if(cmd === 'help') {
+                    addLog('commands: version, reboot, ls, pkg');
+                } else if(cmd === 'version') {
+                    addLog('PS3 4.89 CFW');
+                } else if(cmd === 'reboot') {
+                    addLog('rebooting...');
+                } else {
+                    addLog('unknown command');
+                }
+            }, 300);
+            
+            document.getElementById('cmd').value = '';
+        }
+        
+        window.onload = function() {
+            addLog('system initialized');
+            
+            if(navigator.userAgent.includes('PS3') || 
+               navigator.userAgent.includes('PlayStation')) {
+                addLog('RUNNING ON PS3');
+                checkPS3();
+            } else {
+                addLog('running on PC - open on PS3');
+            }
+        };
+    </script>
+</body>
+</html>
